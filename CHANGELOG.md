@@ -1,19 +1,19 @@
 # Changelog
 
-Alle relevanten Änderungen an freigegebenen Versionen des VerbrauchsMonitors werden hier dokumentiert.
+All relevant changes to released versions of VerbrauchsMonitor are documented here.
 
-Die öffentliche Änderungshistorie beginnt mit der ersten freigegebenen Version.
+The public changelog starts with the first released version.
 
 ## [Unreleased]
 
 ### Added
 
-- Lokale SQLite-Datenhaltung mit Hauptdatenbank unter `/config/verbrauchsmonitor.db` und konsistenter Einzel-Backupdatenbank unter `/config/verbrauchsmonitor-backup.db`.
-- Einmalige, verlustfreie Übernahme des bisherigen JSON-Datenbestands beim ersten Start mit SQLite.
+- Local SQLite data storage with the main database at `/config/verbrauchsmonitor.db` and a consistent single backup database at `/config/verbrauchsmonitor-backup.db`.
+- One-time, lossless migration of the existing JSON data during the first startup with SQLite.
 
 ### Changed
 
-- Tarifanzeigen für Arbeits- und Einspeisetarife auf zwei Nachkommastellen begrenzt; interne Tarifpräzision und Berechnungen bleiben unverändert.
-- Persistente Fachdaten werden statt im bisherigen JSON-Speicher in SQLite-Transaktionen gespeichert; JSON bleibt Import-/Exportformat.
+- Displayed energy and feed-in tariffs are limited to two decimal places; internal tariff precision and calculations remain unchanged.
+- Persistent business data is stored in SQLite transactions instead of the previous JSON storage; JSON remains the import/export format.
 
 ### Fixed
