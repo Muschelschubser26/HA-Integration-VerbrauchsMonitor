@@ -7,7 +7,7 @@ Dieses Dokument trennt bekannte fachliche Einschränkungen von Prüfungen, die n
 1. **Physische Zählerwechsel:** Die vollständige Historie beliebig vieler physischer Zählerwechsel mit Segmentdifferenzen, lückenloser Audit-Historie und nachträglicher Korrektur ist noch nicht vollständig umgesetzt.
 2. **Zeitliche Preisgültigkeit:** Preisänderungen innerhalb eines Abrechnungszeitraums werden noch nicht vollständig zeitanteilig aufgeteilt. Eine vollständige Tarifgültigkeitshistorie und unveränderliche Abrechnungssnapshots stehen noch aus.
 3. **Grundpreis Einspeisung:** Ein eigenständiger Grundpreis für Einspeisung ist nicht als separater Vertragsbestandteil modelliert.
-4. **Datenexport:** Konfiguration in Config-Entry-Optionen und fachliche Daten im lokalen JSON-Datenspeicher sind getrennte Speicherbereiche. Ein gemeinsamer vollständiger Export/Import beider Bereiche ist noch nicht umgesetzt.
+4. **Datenexport:** Konfiguration in Config-Entry-Optionen und fachliche Daten in der lokalen SQLite-Datenbank sind getrennte Speicherbereiche. Ein gemeinsamer vollständiger Export/Import beider Bereiche ist noch nicht umgesetzt.
 5. **Abrechnungsbereiche:** Der aktuelle Vertrags-/Zähleraufbau unterstützt die vorgesehenen Verbrauchs- und Einspeisungsrichtungen. Ein vollständig frei definierbares Modell beliebig vieler Abrechnungsbereiche ist nicht umgesetzt.
 6. **Saldo und Messwerte:** Ein ungültiger Zählerrückgang wird nicht als Verbrauch interpretiert. In diesem Fall kann der daraus abgeleitete Kontostand nicht berechnet werden und muss fachlich geprüft werden.
 

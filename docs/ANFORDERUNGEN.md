@@ -13,7 +13,7 @@ und noch nicht als erfüllt getestet.
 | VM-006 | Beliebig viele Sonderzahlungen, Gutschriften und Korrekturen | umgesetzt: getrennte, zugeordnete Buchungsarten mit dauerhafter Speicherung |
 | VM-007 | Zentrale Konfiguration unter Einstellungen → VerbrauchsMonitor/Zählerdaten | teilweise: zentrale Hub-Verwaltung über Config Flow und Options Flow; einzelne Verwaltungsabläufe bleiben mehrstufig |
 | VM-008 | Individuelle Abrechnungszeiträume und optionale Enddaten | offen |
-| VM-009 | Optionale DB; Abrechnung unabhängig von DB; Status und Wiederherstellung | teilweise: lokaler JSON-Datenspeicher mit Status, Optimierung, Import/Export und Reset; vollständige DB-unabhängige Abrechnung und Wiederherstellung offen |
+| VM-009 | Optionale DB; Abrechnung unabhängig von DB; Status und Wiederherstellung | teilweise: lokale SQLite-Datenbank mit Status, Optimierung, JSON-Import/-Export, Einzel-Backup und Reset; vollständige DB-unabhängige Abrechnung und mehrstufige Wiederherstellung offen |
 | VM-010 | Deutsch/Englisch, getrennte Backend-/Frontend-Übersetzungen | technisch umgesetzt: deutsche und englische Übersetzungsschlüssel sind synchron; vollständige Sichtprüfung in einer laufenden HA-Oberfläche bleibt Zielsystemtest |
 | VM-011 | Geplante Zählerwechsel mit Erinnerungen und getrennter Ist-Dokumentation | offen |
 | VM-012 | Erinnerungen und Vorbereitung des nächsten Abrechnungszeitraums | offen |

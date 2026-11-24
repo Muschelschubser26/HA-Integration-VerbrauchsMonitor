@@ -1,4 +1,4 @@
-# Installation und Bedienung – VerbrauchsMonitor 0.0.2 – Beta R113
+# Installation und Bedienung – VerbrauchsMonitor 0.0.2 – Dev R114
 
 ## Voraussetzungen
 

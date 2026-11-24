@@ -53,7 +53,7 @@ Der Zuverlässigkeitswert bewertet unter anderem Historienlänge, Datenabdeckung
 
 ## Persistenz und Migration
 
-Die Konfiguration wird über den Home-Assistant-Config-Entry verwaltet. Fachliche Buchungsdaten werden lokal im integrationsspezifischen JSON-Datenspeicher verwaltet. Schemaänderungen werden versioniert und über Migrationsfunktionen behandelt. Importdaten werden vor Übernahme validiert. Reset-Funktionen sind getrennt und müssen über den vorgesehenen Bestätigungsablauf ausgelöst werden.
+Die Konfiguration wird über den Home-Assistant-Config-Entry verwaltet. Fachliche Buchungsdaten liegen in `/config/verbrauchsmonitor.db` in einer lokalen SQLite-Datenbank. Die Daten werden als validierter Snapshot innerhalb einer SQLite-Transaktion gespeichert; SQLite verwendet WAL-Modus, aktivierte Foreign-Key-Prüfung und `synchronous=FULL`. Die einzelne rollierende Sicherung liegt unter `/config/verbrauchsmonitor-backup.db` und wird über die SQLite-Backup-API konsistent aktualisiert. Die fachliche Payload-Schemaversion bleibt getrennt von der SQLite-Dateischemaversion. Der frühere JSON-Bestand unter `.storage/verbrauchsmonitor_data.json` wird beim ersten Zugriff einmalig migriert und nicht gelöscht. JSON bleibt das validierte Austauschformat für Import und Export. Reset-Funktionen sichern den vorherigen SQLite-Stand zunächst in der Backup-Datei und müssen über den vorgesehenen Bestätigungsablauf ausgelöst werden.
 
 Die Migration älterer Config Entries überführt das frühere Einzelzähler-Modell in das zentrale Hub-Modell. Legacy-Buchungen ohne eindeutige Zuordnung werden nicht stillschweigend verrechnet.
 

@@ -5,7 +5,7 @@
     "@Muschelschubser26"
   ],
   "config_flow": true,
-  "documentation": "https://gitlab.com/muschelschubser26-integrations/integration-verbrauchsmonitor-production",
+  "documentation": "https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor-Beta",
   "integration_type": "hub",
   "iot_class": "local_push",
   "requirements": [],

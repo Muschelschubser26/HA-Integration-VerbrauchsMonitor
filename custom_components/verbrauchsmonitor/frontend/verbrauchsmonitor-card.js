@@ -1,4 +1,4 @@
-/* VerbrauchsMonitor dashboard card – v0.0.2 R111 */
+/* VerbrauchsMonitor dashboard card – v0.0.2 R114 */
 class VerbrauchsMonitorCard extends HTMLElement {
   setConfig(config) {
     this.config = config || {};
@@ -197,9 +197,9 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
     const valid = s => s && !["unknown", "unavailable", "none", ""].includes(String(s.state).toLowerCase()) && Number.isFinite(Number(s.state));
     const num = (v, digits=2) => Number.isFinite(Number(v)) ? new Intl.NumberFormat(locale,{minimumFractionDigits:digits,maximumFractionDigits:digits}).format(Number(v)) : "–";
     const money = v => `${num(v,2)} €`;
-    // Show the real tariff precision (including VAT-derived fractions);
-    // two decimals could hide enough precision to change a large kWh total.
-    const tariff = v => Number.isFinite(Number(v)) ? new Intl.NumberFormat(locale,{minimumFractionDigits:2,maximumFractionDigits:6,useGrouping:false}).format(Number(v)) : "–";
+    // Tariffs are displayed with two decimal places only. The unrounded
+    // backend tariff remains untouched and is still used for all calculations.
+    const tariff = v => Number.isFinite(Number(v)) ? new Intl.NumberFormat(locale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false}).format(Number(v)) : "–";
     const inputNumber = (value, digits=2, trim=false) => {
       const number = Number(value);
       if (!Number.isFinite(number)) return "0";
