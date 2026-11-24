@@ -1,0 +1,304 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Set up VerbrauchsMonitor",
+        "description": "Central management for all contracts and electricity meters.",
+        "data": {}
+      }
+    },
+    "abort": {
+      "already_configured": "VerbrauchsMonitor is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "VerbrauchsMonitor management",
+        "menu_options": {
+          "contracts": "Contracts",
+          "meters": "Meters",
+          "forecast": "Forecast",
+          "billing": "Bills and advances",
+          "data_management": "Data management",
+          "about": "About"
+        }
+      },
+      "contracts": {
+        "title": "Contracts",
+        "description": "Select, create or delete a contract. A wizard guides you through contract details when creating or editing.",
+        "data": {
+          "action": "Action",
+          "selected": "Select contract"
+        },
+        "data_description": {
+          "action": "Speichern oder ausgewählten Vertrag löschen."
+        },
+        "submit": "Next"
+      },
+      "meters": {
+        "title": "Meter selection",
+        "description": "Create a meter: continue directly to the form. For edit or delete, the meter selector appears directly below the action.",
+        "data": {
+          "action": "Action",
+          "selected": "Select meter"
+        },
+        "data_description": {
+          "action": "Edit or delete the selected meter. With no selection, a new meter is created."
+        },
+        "submit": "Next"
+      },
+      "billing": {
+        "title": "Bills and advances",
+        "description": "Manage billing records and monthly advances.",
+        "data": {
+          "action": "Action",
+          "selected": "Select booking"
+        },
+        "menu_options": {
+          "billing_bookings": "Manage bookings",
+          "advance_meter": "Edit monthly advances"
+        }
+      },
+      "database": {
+        "title": "Database information",
+        "description": "{database_info}\n\n{feedback}",
+        "menu_options": {
+          "database_optimize": "Optimize database",
+          "database_reset": "Reset database"
+        }
+      },
+      "about": {
+        "title": "About VerbrauchsMonitor",
+        "description": "Version 0.0.2 – Dev  \nRevision: {revision}  \nDeveloper: Muschelschubser26 & ChatGPT  \nSupport: [Support@gehtdoch.eu](mailto:Support@gehtdoch.eu)",
+        "data": {}
+      },
+      "meter_edit": {
+        "title": "Configure meter",
+        "description": "Configure meter data, its contract and measurement entities. The final reading of the previous billing period is the calculation basis. Feed-in and other measurements are optional. Selected entities are used automatically; empty optional fields are not stored.",
+        "data": {
+          "name": "Meter name",
+          "meter_number": "Meter number",
+          "contract_id": "Assigned contract",
+          "consumption_entity": "Consumption meter reading entity",
+          "consumption_power_entity": "Current consumption power entity",
+          "previous_consumption_reading": "Consumption meter reading at billing start (kWh, decimal comma supported)",
+          "feed_in_entity": "Feed-in meter reading entity (optional)",
+          "feed_in_power_entity": "Current feed-in power entity (optional)",
+          "previous_feed_in_reading": "Feed-in meter reading at billing start (kWh, decimal comma supported)",
+          "outdoor_illuminance_entity": "Outdoor illuminance entity (optional)",
+          "feed_in_monthly_advance": "Monthly feed-in advance (actual payout €)"
+        },
+        "submit": "Finish"
+      },
+      "contract_wizard_identity": {
+        "title": "Contract – Step 1 of 2",
+        "description": "Enter the provider, contract name and contract number. Set the billing period start and duration.",
+        "data": {
+          "provider": "Provider",
+          "name": "Contract name",
+          "contract_number": "Contract number",
+          "contract_start": "Contract start",
+          "contract_change_date": "Contract change date",
+          "billing_period_start": "Billing period start",
+          "billing_period_months": "Billing period duration (months)",
+          "contract_end": "Contract end"
+        },
+        "submit": "Next"
+      },
+      "contract_wizard_prices": {
+        "title": "Contract – Step 2 of 2",
+        "description": "Set the billing areas and their prices. Finish saves the contract.",
+        "data": {
+          "vat_rate": "VAT (%)",
+          "base_price_input": "Annual base price (€)",
+          "base_price_includes_vat": "Base price includes VAT",
+          "purchase_price_input": "Energy price (ct/kWh)",
+          "purchase_price_includes_vat": "Energy price includes VAT",
+          "monthly_advance_input": "Monthly advance (€)",
+          "monthly_advance_includes_vat": "Advance includes VAT",
+          "primary_billing_type": "Primary billing area",
+          "feed_in_price_input": "Feed-in tariff (ct/kWh)",
+          "feed_in_price_includes_vat": "Feed-in tariff includes VAT"
+        },
+        "submit": "Finish"
+      },
+      "booking_edit": {
+        "title": "Create or edit payment",
+        "description": "Assign the logical meter and billing direction first. Unresolved legacy bookings are excluded until assigned.",
+        "data": {
+          "meter_id": "Logical meter",
+          "direction": "Billing direction",
+          "contract_id": "Associated contract",
+          "date": "Payment date",
+          "amount": "Amount in EUR",
+          "comment": "Comment (optional)",
+          "booking_type": "Payment type"
+        },
+        "submit": "Save"
+      },
+      "meter_select": {
+        "title": "Select meter",
+        "description": "Select the meter to edit or delete. The first meter is selected by default.",
+        "data": {
+          "selected": "Select meter"
+        },
+        "submit": "Next"
+      },
+      "additional_values": {
+        "title": "Additional values",
+        "description": "Configure optional hub-wide measurements. Outdoor illuminance is independent of individual meters.",
+        "data": {
+          "outdoor_illuminance_entity": "Outdoor illuminance entity (optional)"
+        }
+      },
+      "database_status": {
+        "title": "Database status",
+        "description": "Show database status. The result is displayed here after execution.",
+        "data": {},
+        "submit": "Show status"
+      },
+      "database_optimize": {
+        "title": "Optimize database",
+        "description": "The database will be checked and rewritten compactly.",
+        "data": {},
+        "submit": "Optimize"
+      },
+      "database_export": {
+        "title": "Export database",
+        "description": "Export the database to www/verbrauchsmonitor.",
+        "data": {},
+        "submit": "Export"
+      },
+      "database_import": {
+        "title": "Import database",
+        "description": "Enter a filename from www/verbrauchsmonitor. Existing data is backed up first.",
+        "data": {
+          "filename": "Filename"
+        },
+        "submit": "Import"
+      },
+      "database_result": {
+        "title": "Database result",
+        "description": "{result}",
+        "data": {},
+        "submit": "Back"
+      },
+      "data_management": {
+        "title": "Data management",
+        "description": "Select the scopes to reset. A separate confirmation follows. Resetting contracts also requires resetting meters.",
+        "data": {
+          "contracts": "Contract",
+          "meters": "Reset meters",
+          "billing": "Reset billing",
+          "database": "Database",
+          "forecasts": "Reset forecasts"
+        },
+        "submit": "Continue"
+      },
+      "data_management_confirm": {
+        "title": "Confirm reset",
+        "description": "Selected scopes: {scopes}. The database file is backed up before reset. Explicitly confirm the action.",
+        "data": {
+          "confirm": "I confirm resetting the selected scopes"
+        },
+        "submit": "Reset"
+      },
+      "contract_select": {
+        "title": "Select contract",
+        "description": "Select the contract for the previously selected action. The action is retained.",
+        "data": {
+          "selected": "Contract"
+        },
+        "error": {
+          "select_contract": "Please select a contract."
+        },
+        "submit": "Next"
+      },
+      "contract_delete_confirm": {
+        "title": "Confirm contract deletion",
+        "description": "Do you really want to delete the selected contract?",
+        "data": {
+          "confirm": "Confirm deletion"
+        }
+      },
+      "database_reset_confirm": {
+        "title": "Confirm database reset",
+        "description": "A backup of the database file will be created before resetting. This removes the current database.",
+        "data": {
+          "confirm": "I confirm resetting the database"
+        },
+        "submit": "Reset"
+      },
+      "forecast": {
+        "title": "Configure forecasts",
+        "description": "Enable forecasts independently for each meter reading. Consumption is enabled by default and feed-in is disabled. The feed-in advance is configured in the associated contract. The current astronomical season is calculated automatically from the Home Assistant location: {current_season}. No Season integration or manual selection is required.",
+        "data": {
+          "enabled_forecasts": "Enable forecasts:"
+        },
+        "submit": "Save"
+      },
+      "advance_meter": {
+        "title": "Select electricity meter",
+        "description": "Select the electricity meter whose monthly advances you want to edit.",
+        "data": {
+          "meter_id": "Electricity meter"
+        }
+      },
+      "advance_direction": {
+        "title": "Select billing direction",
+        "data": {
+          "direction": "Billing direction"
+        }
+      },
+      "advance_months": {
+        "title": "Edit monthly advances",
+        "description": "Months are shown from the billing period start through the current month. Future months are not shown.",
+        "data": {}
+      },
+      "billing_bookings": {
+        "title": "Manage bookings",
+        "description": "Select, edit or delete existing bookings, or create a new booking.",
+        "data": {
+          "action": "Action",
+          "selected": "Select booking"
+        }
+      },
+      "forecast_reset_select": {
+        "title": "Reset forecasts",
+        "description": "Select the meter readings and directions whose forecasts should be reset. All configured meter readings are listed.",
+        "data": {
+          "selected_forecasts": "Forecasts to reset"
+        }
+      }
+    },
+    "error": {
+      "contract_in_use": "Der Vertrag ist noch einem Zähler zugeordnet. Ändere zuerst die Zählerzuordnung.",
+      "select_meter": "Select a meter first.",
+      "required": "This field is required.",
+      "invalid_contract": "The selected contract does not exist.",
+      "select_contract": "Please select a contract first.",
+      "required_identity": "Provider, contract name and contract number are required.",
+      "no_meters": "No meter exists yet. Create a new meter first.",
+      "invalid_reading": "Enter a valid meter reading. Use a comma for decimal places.",
+      "select_booking": "Select a booking first.",
+      "invalid_amount": "Enter a valid amount. Decimal comma is supported.",
+      "filename_required": "Enter a filename.",
+      "database_error": "The database action failed.",
+      "reset_select_at_least_one": "Select at least one scope.",
+      "reset_contracts_require_meters": "Contracts can only be reset together with meters.",
+      "reset_confirmation_required": "Enable the confirmation checkbox.",
+      "contract_flow_internal_error": "Internal error while moving to the next contract step. The existing contract was not changed; see Home Assistant logs for details.",
+      "invalid_tariff": "Enter a valid price with no more than six decimal places.",
+      "invalid_assignment": "Meter, contract and billing direction must match.",
+      "duplicate_billing_type": "Consumption and feed-in cannot be selected twice.",
+      "invalid_billing_period": "Enter a valid start date and a duration of at least one month.",
+      "invalid_advance_amount": "Enter a valid non-negative amount for each month.",
+      "save_failed": "The booking could not be saved. Please check the system log and database status."
+    },
+    "abort": {
+      "missing_billing_start": "No billing period start is configured for the selected meter.",
+      "no_current_billing_month": "The current month is outside the billing period."
+    }
+  }
+}

@@ -1,0 +1,304 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "VerbrauchsMonitor einrichten",
+        "description": "Zentrale Verwaltung für alle Verträge und Stromzähler.",
+        "data": {}
+      }
+    },
+    "abort": {
+      "already_configured": "VerbrauchsMonitor ist bereits eingerichtet."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "VerbrauchsMonitor-Verwaltung",
+        "menu_options": {
+          "contracts": "Vertragsdaten",
+          "meters": "Zähler",
+          "forecast": "Prognose",
+          "billing": "Abrechnungen und Abschläge",
+          "data_management": "Datenverwaltung",
+          "about": "Über"
+        }
+      },
+      "contracts": {
+        "title": "Vertragsdaten",
+        "description": "Vertrag auswählen, neu anlegen oder löschen. Beim Anlegen und Bearbeiten führt ein Wizard durch die Vertragsdaten.",
+        "data": {
+          "action": "Aktion",
+          "selected": "Vertrag auswählen"
+        },
+        "data_description": {
+          "action": "Speichern oder ausgewählten Vertrag löschen."
+        },
+        "submit": "Weiter"
+      },
+      "meters": {
+        "title": "Zähler – Auswahl",
+        "description": "Neuen Zähler anlegen: direkt weiter zur Eingabe. Bei Bearbeiten oder Löschen erscheint die Zählerauswahl direkt unter der Aktion.",
+        "data": {
+          "action": "Aktion",
+          "selected": "Zähler auswählen"
+        },
+        "data_description": {
+          "action": "Bearbeiten oder Löschen des ausgewählten Zählers. Ohne Auswahl wird ein neuer Zähler angelegt."
+        },
+        "submit": "Weiter"
+      },
+      "billing": {
+        "title": "Abrechnungen und Abschläge",
+        "description": "Abrechnungen und monatliche Abschläge verwalten.",
+        "data": {
+          "action": "Aktion",
+          "selected": "Buchung auswählen"
+        },
+        "menu_options": {
+          "billing_bookings": "Buchungen verwalten",
+          "advance_meter": "Monatsabschläge bearbeiten"
+        }
+      },
+      "database": {
+        "title": "Datenbankinformationen",
+        "description": "{database_info}\n\n{feedback}",
+        "menu_options": {
+          "database_optimize": "Datenbank optimieren",
+          "database_reset": "Datenbank zurücksetzen"
+        }
+      },
+      "about": {
+        "title": "Über VerbrauchsMonitor",
+        "description": "Version 0.0.2 – Dev  \nRevision: {revision}  \nEntwickler: Muschelschubser26 & ChatGPT  \nSupport: [Support@gehtdoch.eu](mailto:Support@gehtdoch.eu)",
+        "data": {}
+      },
+      "meter_edit": {
+        "title": "Zähler konfigurieren",
+        "description": "Zählerdaten, zugehörigen Vertrag und Messwert-Entitäten festlegen. Der Endzählerstand des letzten Abrechnungszeitraums ist die Berechnungsbasis. Einspeisung und weitere Messwerte sind optional. Eine ausgewählte Entität wird automatisch verwendet; leere optionale Felder werden nicht gespeichert.",
+        "data": {
+          "name": "Zählername",
+          "meter_number": "Zählernummer",
+          "contract_id": "Zugehöriger Vertrag",
+          "consumption_entity": "Entität für Zählerstand Verbrauch",
+          "consumption_power_entity": "Entität für aktuelle Verbrauchsleistung",
+          "previous_consumption_reading": "Zählerstand Abrechnungsbeginn Verbrauch (kWh, Dezimalkomma möglich)",
+          "feed_in_entity": "Entität für Zählerstand Einspeisung (optional)",
+          "feed_in_power_entity": "Entität für aktuelle Einspeiseleistung (optional)",
+          "previous_feed_in_reading": "Zählerstand Abrechnungsbeginn Einspeisung (kWh, Dezimalkomma möglich)",
+          "outdoor_illuminance_entity": "Entität Außenhelligkeit (optional)",
+          "feed_in_monthly_advance": "Monatlicher Einspeiseabschlag (Auszahlungsbetrag €)"
+        },
+        "submit": "Fertigstellen"
+      },
+      "contract_wizard_identity": {
+        "title": "Vertrag – Schritt 1 von 2",
+        "description": "Anbieter, Vertragsname und Vertragsnummer eingeben. Beginn und Laufzeit des Abrechnungszeitraums festlegen.",
+        "data": {
+          "provider": "Anbieter",
+          "name": "Vertragsname",
+          "contract_number": "Vertragsnummer",
+          "contract_start": "Vertragsbeginn",
+          "contract_change_date": "Vertragsänderung",
+          "billing_period_start": "Abrechnungszeitraum-Beginn",
+          "billing_period_months": "Abrechnungszeitraum-Laufzeit (Monate)",
+          "contract_end": "Vertragsende"
+        },
+        "submit": "Weiter"
+      },
+      "contract_wizard_prices": {
+        "title": "Vertrag – Schritt 2 von 2",
+        "description": "Primären Abrechnungsbereich und zugehörige Preise festlegen. Mit Fertigstellen wird der Vertrag gespeichert.",
+        "data": {
+          "vat_rate": "Mehrwertsteuer (%)",
+          "base_price_input": "Grundpreis jährlich (€)",
+          "base_price_includes_vat": "Grundpreis inklusive Mehrwertsteuer",
+          "purchase_price_input": "Arbeitspreis (ct/kWh)",
+          "purchase_price_includes_vat": "Arbeitspreis inklusive Mehrwertsteuer",
+          "monthly_advance_input": "Monatlicher Abschlag (€)",
+          "monthly_advance_includes_vat": "Abschlag inklusive Mehrwertsteuer",
+          "primary_billing_type": "Primärer Abrechnungsbereich",
+          "feed_in_price_input": "Einspeisevergütung (ct/kWh)",
+          "feed_in_price_includes_vat": "Einspeisevergütung inklusive Mehrwertsteuer"
+        },
+        "submit": "Fertigstellen"
+      },
+      "booking_edit": {
+        "title": "Zahlung erfassen oder bearbeiten",
+        "description": "Zuerst Zähler und Abrechnungsbereich zuordnen. Ungeklärte Altbuchungen werden erst nach dieser Zuordnung berücksichtigt.",
+        "data": {
+          "meter_id": "Logischer Zähler",
+          "direction": "Abrechnungsbereich",
+          "contract_id": "Zugehöriger Vertrag",
+          "date": "Zahlungsdatum",
+          "amount": "Betrag in Euro",
+          "comment": "Kommentar (optional)",
+          "booking_type": "Zahlungsart"
+        },
+        "submit": "Speichern"
+      },
+      "meter_select": {
+        "title": "Zähler auswählen",
+        "description": "Wähle den zu bearbeitenden oder zu löschenden Zähler. Standardmäßig ist der erste Zähler ausgewählt.",
+        "data": {
+          "selected": "Zähler auswählen"
+        },
+        "submit": "Weiter"
+      },
+      "additional_values": {
+        "title": "Weitere Werte",
+        "description": "Zentrale optionale Messwerte konfigurieren. Außenhelligkeit ist unabhängig von einzelnen Zählern.",
+        "data": {
+          "outdoor_illuminance_entity": "Entität Außenhelligkeit (optional)"
+        }
+      },
+      "database_status": {
+        "title": "Datenbankstatus",
+        "description": "Datenbankstatus anzeigen. Das Ergebnis wird nach Ausführung hier angezeigt.",
+        "data": {},
+        "submit": "Status anzeigen"
+      },
+      "database_optimize": {
+        "title": "Datenbank optimieren",
+        "description": "Die Datenbank wird geprüft und kompakt neu geschrieben.",
+        "data": {},
+        "submit": "Optimieren"
+      },
+      "database_export": {
+        "title": "Datenbank exportieren",
+        "description": "Exportiert die Datenbank nach www/verbrauchsmonitor.",
+        "data": {},
+        "submit": "Exportieren"
+      },
+      "database_import": {
+        "title": "Datenbank importieren",
+        "description": "Importdatei aus www/verbrauchsmonitor angeben. Vorhandene Daten werden vorher gesichert.",
+        "data": {
+          "filename": "Dateiname"
+        },
+        "submit": "Importieren"
+      },
+      "database_result": {
+        "title": "Datenbank – Ergebnis",
+        "description": "{result}",
+        "data": {},
+        "submit": "Zurück"
+      },
+      "data_management": {
+        "title": "Datenverwaltung",
+        "description": "Wähle die Bereiche aus, die zurückgesetzt werden sollen. Vor der Ausführung folgt eine separate Bestätigung. Ein Vertragsreset erfordert auch den Zählerreset.",
+        "data": {
+          "contracts": "Vertrag",
+          "meters": "Zähler zurücksetzen",
+          "billing": "Abrechnungen zurücksetzen",
+          "database": "Datenbank",
+          "forecasts": "Prognose zurücksetzen"
+        },
+        "submit": "Weiter"
+      },
+      "data_management_confirm": {
+        "title": "Zurücksetzen bestätigen",
+        "description": "Ausgewählte Bereiche: {scopes}. Vor dem Zurücksetzen wird die Datenbankdatei als Sicherung erhalten. Bitte bestätige die Aktion ausdrücklich.",
+        "data": {
+          "confirm": "Ich bestätige das Zurücksetzen der ausgewählten Bereiche"
+        },
+        "submit": "Zurücksetzen"
+      },
+      "contract_select": {
+        "title": "Vertrag auswählen",
+        "description": "Wähle den Vertrag für die zuvor gewählte Aktion. Die Aktion bleibt dabei erhalten.",
+        "data": {
+          "selected": "Vertrag"
+        },
+        "error": {
+          "select_contract": "Bitte einen Vertrag auswählen."
+        },
+        "submit": "Weiter"
+      },
+      "contract_delete_confirm": {
+        "title": "Vertrag löschen bestätigen",
+        "description": "Soll der ausgewählte Vertrag wirklich gelöscht werden?",
+        "data": {
+          "confirm": "Löschen bestätigen"
+        }
+      },
+      "database_reset_confirm": {
+        "title": "Datenbank zurücksetzen bestätigen",
+        "description": "Vor dem Zurücksetzen wird eine Sicherung der Datenbankdatei erstellt. Dieser Vorgang entfernt die aktuelle Datenbank.",
+        "data": {
+          "confirm": "Ich bestätige das Zurücksetzen der Datenbank"
+        },
+        "submit": "Zurücksetzen"
+      },
+      "forecast": {
+        "title": "Prognose konfigurieren",
+        "description": "Prognosen je Zählerstand unabhängig aktivieren. Verbrauch ist standardmäßig aktiviert, Einspeisung deaktiviert. Der Einspeiseabschlag wird im zugehörigen Vertrag gepflegt. Die aktuelle astronomische Jahreszeit wird automatisch anhand des Home-Assistant-Standorts berechnet: {current_season}. Eine Season-Integration oder manuelle Auswahl ist nicht erforderlich.",
+        "data": {
+          "enabled_forecasts": "Prognosen aktivieren:"
+        },
+        "submit": "Speichern"
+      },
+      "advance_meter": {
+        "title": "Stromzähler auswählen",
+        "description": "Wählen Sie den Stromzähler, dessen Monatsabschläge Sie bearbeiten möchten.",
+        "data": {
+          "meter_id": "Stromzähler"
+        }
+      },
+      "advance_direction": {
+        "title": "Abrechnungsbereich auswählen",
+        "data": {
+          "direction": "Abrechnungsbereich"
+        }
+      },
+      "advance_months": {
+        "title": "Monatsabschläge bearbeiten",
+        "description": "Angezeigt werden der Abrechnungsbeginn bis einschließlich des aktuellen Monats. Zukünftige Monate werden nicht angezeigt.",
+        "data": {}
+      },
+      "billing_bookings": {
+        "title": "Buchungen verwalten",
+        "description": "Vorhandene Buchungen auswählen, bearbeiten oder löschen oder eine neue Buchung anlegen.",
+        "data": {
+          "action": "Aktion",
+          "selected": "Buchung auswählen"
+        }
+      },
+      "forecast_reset_select": {
+        "title": "Prognosen zurücksetzen",
+        "description": "Wähle die Zählerstände und Richtungen aus, deren Prognose zurückgesetzt werden soll. Alle konfigurierten Zählerstände werden angezeigt.",
+        "data": {
+          "selected_forecasts": "Auszuwählende Prognosen"
+        }
+      }
+    },
+    "error": {
+      "contract_in_use": "Der Vertrag ist noch einem Zähler zugeordnet. Ändere zuerst die Zählerzuordnung.",
+      "select_meter": "Bitte zuerst einen Zähler auswählen.",
+      "required": "Dieses Feld ist erforderlich.",
+      "invalid_contract": "Der ausgewählte Vertrag ist nicht vorhanden.",
+      "select_contract": "Bitte zuerst einen Vertrag auswählen.",
+      "required_identity": "Anbieter, Vertragsname und Vertragsnummer sind Pflichtfelder.",
+      "no_meters": "Es ist noch kein Zähler vorhanden. Lege zuerst einen neuen Zähler an.",
+      "invalid_reading": "Bitte einen gültigen Zählerstand eingeben. Verwende ein Komma für Nachkommastellen.",
+      "select_booking": "Bitte zuerst eine Buchung auswählen.",
+      "invalid_amount": "Bitte einen gültigen Betrag eingeben. Dezimalkomma ist zulässig.",
+      "filename_required": "Bitte einen Dateinamen angeben.",
+      "database_error": "Die Datenbankaktion ist fehlgeschlagen.",
+      "reset_select_at_least_one": "Mindestens einen Bereich auswählen.",
+      "reset_contracts_require_meters": "Beim Zurücksetzen der Verträge müssen auch die Zähler zurückgesetzt werden.",
+      "reset_confirmation_required": "Bitte die Sicherheitsbestätigung aktivieren.",
+      "contract_flow_internal_error": "Interner Fehler beim Wechsel zum nächsten Vertragsschritt. Der bisherige Vertrag wurde nicht verändert; Details stehen im Home-Assistant-Protokoll.",
+      "invalid_tariff": "Bitte einen gültigen Preis mit höchstens sechs Nachkommastellen eingeben.",
+      "invalid_assignment": "Zähler, Vertrag und Abrechnungsbereich müssen zusammenpassen.",
+      "duplicate_billing_type": "Verbrauch und Einspeisung dürfen nicht doppelt ausgewählt werden.",
+      "invalid_billing_period": "Bitte einen gültigen Beginn und eine Laufzeit von mindestens einem Monat eingeben.",
+      "invalid_advance_amount": "Bitte geben Sie für jeden Monat einen gültigen nicht negativen Betrag ein.",
+      "save_failed": "Die Buchung konnte nicht gespeichert werden. Bitte Protokoll und Datenbankstatus prüfen."
+    },
+    "abort": {
+      "missing_billing_start": "Für den ausgewählten Stromzähler ist kein Abrechnungsbeginn hinterlegt.",
+      "no_current_billing_month": "Der aktuelle Monat liegt außerhalb des Abrechnungszeitraums."
+    }
+  }
+}

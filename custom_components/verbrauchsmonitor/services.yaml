@@ -1,0 +1,49 @@
+database_status:
+  name: Datenbankstatus anzeigen
+  description: Prüft Datenbankdatei, Schema und Anzahl der Datensätze.
+database_optimize:
+  name: Datenbank optimieren
+  description: Schreibt die Datenbank kompakt und atomar neu.
+database_export:
+  name: Datenbank exportieren
+  description: Exportiert die lokale Datenbank nach www/verbrauchsmonitor.
+database_import:
+  name: Datenbank importieren
+  description: Importiert eine zuvor exportierte JSON-Datei aus www/verbrauchsmonitor und erstellt vorher eine Sicherung.
+  fields:
+    filename:
+      name: Dateiname
+      description: Nur der Dateiname innerhalb von www/verbrauchsmonitor.
+      required: true
+      selector:
+        text:
+
+set_billing_baseline:
+  name: Abrechnungsbasis korrigieren
+  description: Korrigiert den Endzählerstand des vorherigen Abrechnungszeitraums für einen Zähler.
+  fields:
+    entry_id:
+      name: Integrationseintrag
+      required: true
+      selector:
+        text:
+    meter_id:
+      name: Zählerkennung
+      required: true
+      selector:
+        text:
+    direction:
+      name: Richtung
+      required: true
+      selector:
+        select:
+          options:
+            - consumption
+            - feed_in
+    value:
+      name: Zählerstand
+      required: true
+      selector:
+        number:
+          min: 0
+          mode: box

@@ -1,0 +1,20 @@
+{
+  "domain": "verbrauchsmonitor",
+  "name": "VerbrauchsMonitor",
+  "codeowners": [
+    "@Muschelschubser26"
+  ],
+  "config_flow": true,
+  "documentation": "https://gitlab.com/muschelschubser26-integrations/integration-verbrauchsmonitor-production",
+  "integration_type": "hub",
+  "iot_class": "local_push",
+  "requirements": [],
+  "version": "0.0.2",
+  "dependencies": [
+    "http",
+    "frontend"
+  ],
+  "after_dependencies": [
+    "lovelace"
+  ]
+}
