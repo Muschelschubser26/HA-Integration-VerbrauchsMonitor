@@ -29,8 +29,8 @@ def test_device_manufacturer_and_package_metadata():
     manifest = json.loads((ROOT / "custom_components/verbrauchsmonitor/manifest.json").read_text())
     hacs = json.loads((ROOT / "hacs.json").read_text())
     assert manifest["domain"] == "verbrauchsmonitor"
-    assert manifest["documentation"] == "https://gitlab.com/muschelschubser26-integrations/integration-verbrauchsmonitor-production"
-    assert hacs["name"] == "ha-verbrauchsmonitor"
+    assert manifest["documentation"] == "https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor-Beta"
+    assert hacs["name"] == "VerbrauchsMonitor"
 
 
 def test_reliability_uses_history_quality_and_method():

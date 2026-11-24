@@ -46,7 +46,7 @@ def test_feed_in_balance_sensor_does_not_round_intermediate_amounts():
 def test_card_shows_gross_feed_in_tariff_with_two_decimals_and_rounds_only_for_display():
     card = CARD.read_text(encoding="utf-8")
     assert 'const priceF = gross(a.feed_in_price_net_ct_kwh);' in card
-    assert 'minimumFractionDigits:2,maximumFractionDigits:6,useGrouping:false' in card
+    assert 'minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false' in card
     assert 'const money = v => `${num(v,2)} €`;' in card
     assert 'const costF = deltaF !== null && deltaF >= 0 ? deltaF*priceF/100 : null;' in card
     assert 'const totalCosts = Number.isFinite(backendTotalCosts) ? backendTotalCosts :' in card

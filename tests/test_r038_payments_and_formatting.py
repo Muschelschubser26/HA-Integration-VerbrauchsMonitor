@@ -5,7 +5,7 @@ INTEGRATION = ROOT / "custom_components/verbrauchsmonitor"
 
 def test_tariff_format_uses_german_comma_and_two_decimals():
     card = (INTEGRATION / "frontend/verbrauchsmonitor-card.js").read_text()
-    assert 'minimumFractionDigits:2,maximumFractionDigits:6' in card
+    assert 'minimumFractionDigits:2,maximumFractionDigits:2' in card
     assert 'tariff(price)' in card
 
 def test_annual_base_price_is_informational_and_not_italic():

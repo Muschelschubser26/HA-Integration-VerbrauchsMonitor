@@ -1,105 +1,101 @@
-# Home Assistant – VerbrauchsMonitor
+# VerbrauchsMonitor
 
-**Version:** 0.0.2  
-**Status:** Public Beta  
-**Revision:** R113
+Home-Assistant-Custom-Integration zur lokalen Verwaltung von Stromzählern, Verträgen, Tarifen, Abrechnungen, Zahlungen und Verbrauchs-/Einspeiseprognosen.
 
-VerbrauchsMonitor is a Home Assistant integration for monitoring, analyzing, and calculating energy consumption and energy feed-in.
+**Projektkennung:** `ha-verbrauchsmonitor`  
+**Integration-Domain:** `verbrauchsmonitor`  
+**SemVer:** `0.0.2`  
+**Paketstand:** `Beta R115`
 
-This version is provided as a public beta. It allows interested users to test the integration under real-world conditions and provide feedback on its functionality and usability.
+Deutsch ist die Standardsprache. Die Oberfläche unterstützt zusätzlich Englisch und richtet sich nach der in Home Assistant eingestellten Sprache. Die Verarbeitung und Speicherung erfolgen lokal in Home Assistant. Es gibt keine ungefragte Cloud-Kommunikation oder Telemetrie.
 
-## Beta Status
+## Funktionsumfang
 
-This version is still under testing.
+- Mehrere logische Stromzähler und mehrere Verträge innerhalb einer Integration.
+- Optionale Zuordnung von Verbrauchs- und Einspeisezählerständen sowie optionalen Leistungs- und Außenhelligkeitsentitäten.
+- Getrennte Abrechnungsrichtungen für Strombezug und Einspeisung.
+- Vertrags- und Tarifverwaltung mit Netto-/Brutto-Eingaben, konfigurierbarer Mehrwertsteuer und getrennten Preisarten.
+- Abrechnungsperioden, Anfangszählerstände und Herkunfts-/Änderungshistorie der Anfangswerte.
+- Lokale Buchungsverwaltung für Abschläge, Sonderzahlungen, Gutschriften und Korrekturen.
+- Getrennte Kontostände für Verbrauch und Einspeisung.
+- Prognosen je Quellzähler und Abrechnungsrichtung; saisonale Gewichtung wird nur bei ausreichender Recorder-Historie und Datenqualität verwendet.
+- Eigene Lovelace-Abrechnungskarte mit Auswahl von logischem Zähler und Abrechnungsrichtung.
+- Datenbankstatus, Optimierung, Import/Export und Reset-Funktionen über die Integrationsoberfläche.
 
-- Features may change in future versions.
-- Bugs and inconsistencies may occur.
-- Results should not be used as the sole basis for billing without independent verification.
-- Before installation and updates, create a backup of your Home Assistant configuration and integration data.
+Die konkrete Verfügbarkeit einzelner Eingabefelder und Anzeigen richtet sich nach der Konfiguration. Nicht konfigurierte optionale Datenquellen werden nicht als gültige Messwerte ersetzt.
 
-## Installation via HACS
+## Voraussetzungen
 
-1. Open HACS in Home Assistant.
-2. Select **Integrations**.
-3. Open the three-dot menu and select **Custom repositories**.
-4. Add the following repository:
+- Home Assistant Core **2026.11.1 oder neuer** (Projektziel gemäß `hacs.json`; tatsächliche Kompatibilität muss in der Zielinstallation geprüft werden).
+- Eine oder mehrere Home-Assistant-Sensorentitäten für Zählerstände. Leistungswerte und Außenhelligkeit sind optional.
+- Für saisonale Prognosen werden geeignete Recorder-Langzeitstatistiken oder ausreichend vorhandene Detailhistorie benötigt.
 
-   `https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor-Beta`
+Die Integration hat keine zusätzlichen Python-Laufzeitabhängigkeiten außerhalb der von Home Assistant bereitgestellten Umgebung (`manifest.json`: `requirements` ist leer).
 
-5. Select **Integration** as the category.
-6. Click **Add**.
-7. Search for **VerbrauchsMonitor** and install it.
-8. Restart Home Assistant.
+## Installation
 
-## Manual Installation
+### Manuelle Installation
 
-1. Download the ZIP archive of the desired release.
-2. Extract the archive.
-3. Copy the `verbrauchsmonitor` folder into:
+1. Vor dem Update ein Home-Assistant-Backup erstellen.
+2. Den Ordner `custom_components/verbrauchsmonitor/` aus diesem Projekt nach `/config/custom_components/verbrauchsmonitor/` kopieren.
+3. Einen vorhandenen Integrationsordner vollständig ersetzen; keine alten Dateien im Ordner zurücklassen.
+4. Home Assistant vollständig neu starten.
+5. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** nach **VerbrauchsMonitor** suchen und die Einrichtung starten.
+6. Nach dem Anlegen die Integrationsoptionen öffnen, um weitere Verträge, Zähler, Abrechnungen, Buchungen und Prognosen zu verwalten.
 
-   `config/custom_components/verbrauchsmonitor/`
+### Lovelace-Karte
 
-4. Restart Home Assistant.
-5. Navigate to **Settings → Devices & Services → Add Integration**.
-6. Search for **VerbrauchsMonitor** and follow the configuration steps.
+Im Lovelace-Storage-Modus registriert die Integration die Kartenressource. Anschließend das Dashboard bzw. den Browser neu laden und über **Karte hinzufügen** nach **VerbrauchsMonitor** suchen. Im YAML-Ressourcenmodus muss folgende Ressource als Modul eingebunden sein:
 
-## Download
+`/verbrauchsmonitor/verbrauchsmonitor-card.js`
 
-Available beta versions are provided through the GitHub Releases section.
+Die Karteninstanz wird für einen logischen Zähler und eine Abrechnungsrichtung (Verbrauch oder Einspeisung) konfiguriert. Weitere Zähler oder Richtungen benötigen jeweils eine eigene Karteninstanz.
 
-Current version:
+## Konfiguration und Bedienung
 
-`VerbrauchsMonitor 0.0.2 – Beta R113`
+Die Ersteinrichtung erfolgt über den Config Flow. Nachträgliche Änderungen werden über den Options Flow der Integration vorgenommen.
 
-## Feedback and Bug Reports
+- **Verträge:** Vertragsbezeichnung und -daten, Abrechnungszeitraum, Arbeitspreis bzw. Einspeisevergütung, Grundpreis, Mehrwertsteuer und vereinbarte Abschläge.
+- **Zähler:** Logischer Zählername, optionale Zählernummer sowie Quellentitäten für Bezug und Einspeisung.
+- **Abrechnungen:** Abrechnungsanfang, Zählerstand-Baselines und Abrechnungswerte.
+- **Buchungen:** Sonderzahlungen, Gutschriften und Korrekturen mit Zuordnung zu Zähler und Abrechnungsrichtung.
+- **Monatsabschläge:** Monatliche Werte können je Zähler und Abrechnungsrichtung gepflegt werden.
+- **Prognose:** Verbrauchs- und Einspeiseprognosen können getrennt aktiviert und zugeordnet werden.
+- **Datenverwaltung:** Datenbankinformationen, Optimierung, Export/Import und bestätigungspflichtige Reset-Aktionen.
 
-Feedback from beta testers is explicitly welcome.
+### Abschlags- und Kontostandslogik
 
-When reporting an issue, please include:
+Ein vertraglich vereinbarter monatlicher Abschlag wird am Monatsersten innerhalb des jeweiligen Abrechnungszeitraums automatisch als geleistet berücksichtigt. Eine manuelle Zahlungsbestätigung ist dafür nicht erforderlich. Eine explizit zugeordnete Abschlagsbuchung ersetzt den automatischen Betrag desselben Monats, damit keine Doppelzählung entsteht. Verbrauchs- und Einspeisungsabschläge werden getrennt verarbeitet. Zukünftige Monatserste werden in Prognosen als erwartete Zahlungen behandelt und verändern den aktuellen Kontostand nicht.
 
-- Home Assistant version
-- VerbrauchsMonitor version and revision
-- Affected feature
-- Expected behavior
-- Actual behavior
-- Relevant error messages from the Home Assistant logs
+Gutschriften und Korrekturen werden als eigenständige, nachvollziehbare Buchungen gespeichert. Die Kontostände folgen der Kundensicht: negative Werte stehen für eine Verbindlichkeit, positive Werte für ein Guthaben.
 
-Please do not publish passwords, access tokens, or other personal information.
+## Speicherung und Datenschutz
 
-## Known Limitations
+Die Integrationskonfiguration liegt in den Home-Assistant-Config-Entry-Daten. Fachliche Buchungen und weitere persistente Integrationsdaten werden lokal in SQLite gespeichert. Die Hauptdatenbank liegt unter `/config/verbrauchsmonitor.db`; die fortlaufend aktualisierte Einzel-Backupdatenbank liegt unter `/config/verbrauchsmonitor-backup.db`. Der bisherige JSON-Datenspeicher unter `.storage/verbrauchsmonitor_data.json` wird beim ersten Start einmalig in SQLite übernommen und bleibt als unveränderte Migrationsquelle erhalten. JSON bleibt das portable Format für Datenexport und -import. Die Sicherung wird mit der SQLite-Backup-API konsistent erstellt; die SQLite-WAL- und Transaktionsmechanismen schützen den aktiven Datenbestand.
 
-The following items are still open development topics:
+Es werden keine Zugangsdaten für externe Dienste benötigt. Es findet keine automatische Telemetrie und keine ungefragte Übertragung von Mess- oder Vertragsdaten statt. Vor Reset- oder Importvorgängen die angezeigten Hinweise beachten und vor größeren Änderungen ein Home-Assistant-Backup erstellen.
 
-- Complete history tracking of physical meter replacements
-- Time-proportional calculation of tariff changes within a billing period
-- Separate base charge for energy feed-in
-- Combined export and import of configuration and local data
-- Freely configurable billing sections
-- Extended handling and correction of invalid meter reading decreases
+## Updates und Neustart
 
-These limitations are known and will be considered during further development.
+- Änderungen an Python-Dateien, `manifest.json` oder Abhängigkeiten: Home Assistant vollständig neu starten.
+- Änderungen ausschließlich an der Lovelace-JavaScript-Karte: Dashboard/Browser neu laden; gegebenenfalls Browser-Cache aktualisieren.
+- Änderungen an Integrationsoptionen: Speichern verwendet den Config-Entry-Reload.
 
-## Versioning
+Ein Config-Entry-Reload importiert geänderte Python-Module nicht neu und ersetzt daher keinen vollständigen Home-Assistant-Neustart nach einem Code-Update.
 
-Release archives follow this naming convention:
+## Dokumentation und Tests
 
-`Integration-VerbrauchsMonitor-x.y.z-Beta-Rxyz.zip`
+- `docs/ARCHITEKTUR.md`: Komponenten, Datenfluss und Speicherverantwortung.
+- `docs/INSTALLATION.md`: Installations- und Bedienhinweise.
+- `docs/UPDATE_UND_RELOAD.md`: Update- und Reload-Verhalten.
+- `docs/ANFORDERUNGEN.md`: Anforderungsliste und Umsetzungsstatus.
+- `docs/OFFENE_PUNKTE.md`: bekannte Grenzen und erforderliche Zielsystemprüfungen.
+- `tests/`: automatisierte Unit- und Regressionstests.
 
-Where:
+Automatisierte Tests sind Bestandteil der Entwicklungsprüfung. Ein erfolgreicher automatisierter Testlauf ersetzt keinen vollständigen Laufzeittest in einer realen Home-Assistant-Installation.
 
-- `x.y.z` represents the product version.
-- `Rxyz` represents the Development revision on which the beta is based.
+## Lizenz und Kontakt
 
-Beta versions retain the exact Development revision number.
+Dem Paket liegt eine `LICENSE`-Datei mit MIT-Lizenztext bei. Die rechtliche Freigabe dieser Lizenz durch den Rechteinhaber ist vor einer öffentlichen Veröffentlichung separat zu bestätigen.
 
-## License
-
-VerbrauchsMonitor is released under the MIT License.
-
-Copyright (c) 2026 Muschelschubser26
-
-The complete license terms are provided in the `LICENSE` file.
-
-## Project
-
-VerbrauchsMonitor is independently developed and is not part of the official Home Assistant project.
+Support: **Support@gehtdoch.eu**

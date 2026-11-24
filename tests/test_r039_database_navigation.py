@@ -16,7 +16,7 @@ def test_database_reset_keeps_confirmation_and_backup():
     database = (INTEGRATION / "database.py").read_text(encoding="utf-8")
     assert "async_step_database_reset_confirm" in flow
     assert "reset_database" in flow
-    assert "shutil.copy2(path, backup)" in database
+    assert "_create_backup(path, backup_path(hass))" in database
 
 def test_translations_have_database_information_and_actions():
     for language in ("de", "en"):

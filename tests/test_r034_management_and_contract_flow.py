@@ -35,8 +35,8 @@ def test_database_menu_and_reset_scopes_are_separate():
 def test_reset_database_creates_backup_before_removing_data():
     source = (INTEGRATION / "database.py").read_text()
     block = source.split("def reset_database", 1)[1]
-    assert "shutil.copy2(path, backup)" in block
-    assert "path.unlink()" in block
+    assert "_create_backup(path, backup_path(hass))" in block
+    assert "update_backup=False" in block
 
 def test_billing_card_has_inline_contract_edit_controls_and_service():
     card = (INTEGRATION / "frontend/verbrauchsmonitor-card.js").read_text()

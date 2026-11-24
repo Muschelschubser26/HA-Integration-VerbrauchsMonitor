@@ -51,7 +51,7 @@ def test_corrections_are_filtered_by_meter_direction_and_not_mutated():
     assert bookings == original
 
 
-def test_database_json_writer_preserves_decimal_precision_as_string(tmp_path):
+def test_database_sqlite_writer_preserves_decimal_precision_as_string(tmp_path):
     # Import database.py with a minimal HA type stub; no HA runtime is required.
     homeassistant = types.ModuleType("homeassistant")
     core = types.ModuleType("homeassistant.core")
@@ -64,11 +64,16 @@ def test_database_json_writer_preserves_decimal_precision_as_string(tmp_path):
     database = importlib.util.module_from_spec(spec)
     sys.modules[spec.name] = database
     spec.loader.exec_module(database)
-    target = tmp_path / "ledger.json"
-    database._write(target, {"amount": Decimal("134.6700")})
-    saved = json.loads(target.read_text(encoding="utf-8"))
-    assert saved["amount"] == "134.6700"
-    assert Decimal(saved["amount"]) == Decimal("134.6700")
+    import sqlite3
+    target = tmp_path / "verbrauchsmonitor.db"
+    payload = {**database._EMPTY, "contracts": [{"id": "contract-1", "amount": Decimal("134.6700")}]}
+    database._write(target, payload)
+    with sqlite3.connect(target) as connection:
+        raw = connection.execute("SELECT payload FROM vm_state WHERE id = 1").fetchone()[0]
+    saved = json.loads(raw)
+    assert saved["contracts"][0]["amount"] == "134.6700"
+    assert Decimal(saved["contracts"][0]["amount"]) == Decimal("134.6700")
+    assert (tmp_path / "verbrauchsmonitor-backup.db").is_file()
 
     class FakeConfig:
         def path(self, *parts):
