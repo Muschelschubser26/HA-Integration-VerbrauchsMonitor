@@ -7,13 +7,13 @@ def test_forecast_is_individually_configurable_and_displayed():
     flow = (INTEGRATION / "config_flow.py").read_text()
     sensor = (INTEGRATION / "sensor.py").read_text()
     card = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text()
-    assert '"forecast", "billing"' in flow
+    assert '"forecast", "settlement", "billing"' in flow
     assert '"forecast_consumption_enabled"' in flow
     assert '"forecast_feed_in_enabled"' in flow
     assert 'mode=selector.SelectSelectorMode.LIST, multiple=True' in flow
     assert 'feed_in_monthly_advance' in flow
     assert 'VerbrauchsMonitorForecastSensor' in sensor
-    assert 'verbrauchsmonitor_{slugify_meter_name(name)}_{direction}_prognose_{metric}' in sensor
+    assert "_jahresbilanz_prognose" in sensor and "_monatsabschlag_prognose" in sensor
     assert 'consumption_forecast_annual_balance' in card
     assert 'feed_in_forecast_monthly_advance' in card
 

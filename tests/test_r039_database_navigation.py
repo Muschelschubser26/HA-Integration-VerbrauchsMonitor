@@ -6,10 +6,10 @@ INTEGRATION = ROOT / "custom_components/verbrauchsmonitor"
 
 def test_database_is_removed_from_main_menu_and_has_two_actions():
     flow = (INTEGRATION / "config_flow.py").read_text(encoding="utf-8")
-    assert 'menu_options=["contracts", "meters", "forecast", "billing", "data_management", "about"]' in flow
+    assert 'menu_options=["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"]' in flow
     assert 'menu_options=["database_optimize", "database_reset"]' in flow
-    assert 'if selected == ["database"]:' in flow
-    assert 'return await self.async_step_database()' in flow
+    assert 'menu_options=["reset_data", "recorder_entities", "database"]' in flow
+    assert 'async def async_step_reset_data' in flow
 
 def test_database_reset_keeps_confirmation_and_backup():
     flow = (INTEGRATION / "config_flow.py").read_text(encoding="utf-8")

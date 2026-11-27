@@ -29,4 +29,4 @@ def test_balance_sensors_have_meter_grouping_metadata():
 
 def test_manifest_version_matches_release():
     manifest = json.loads((INTEGRATION / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["version"] == "0.0.2"
+    assert manifest["version"] == "0.0.1"

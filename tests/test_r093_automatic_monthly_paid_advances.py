@@ -51,13 +51,14 @@ def test_explicit_advance_booking_replaces_automatic_month_not_duplicates_it():
 def test_card_has_no_separate_due_advances_row_and_shows_monthly_amount_as_paid():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text(encoding="utf-8")
     assert 'Bisher fällige Abschläge' not in source
-    assert 'withColon(t("Abschläge","Advances"))' in source
-    assert 'money(finance.advancePaid)' in source
-    assert 'const advancePaid = Number.isFinite(Number(sourceAttributes.recorded_advances_paid))' in source
+    assert 'monthlyAdvanceGroups.map(group =>' in source
+    assert 'money(finance.advancePaid+finance.additionalPayments+finance.corrections)' in source
+    assert 'const groupedAdvanceTotal = monthlyAdvanceGroups.reduce' in source
 
 
 def test_balance_and_forecast_use_the_same_automatic_monthly_payment_calculation():
     source = (INTEGRATION / "sensor.py").read_text(encoding="utf-8")
-    assert 'advances = money_amount(expected_advances)' in source
+    assert 'advances = money_amount(expected_advance_amount)' in source
+    assert 'expected_advances_total' in source
     assert 'return calculate_advance_total(' in source
     assert 'No confirmation or manual booking is required' in source

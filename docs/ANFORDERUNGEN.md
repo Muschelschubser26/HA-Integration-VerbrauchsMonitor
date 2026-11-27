@@ -1,105 +1,80 @@
-# Verbindliche Anforderungsliste – VerbrauchsMonitor
+# Requirements and Verification Register
 
-Alle Anforderungen bleiben Projektumfang. Status `offen` bedeutet: noch nicht implementiert
-und noch nicht als erfüllt getestet.
+This document tracks the project's agreed requirements. A requirement is not considered complete merely because a related UI element exists. Runtime-only checks must be marked as requiring target Home Assistant verification.
 
-| ID | Anforderung | Status |
+## Core requirements
+
+| Area | Requirement | Verification status |
 |---|---|---|
-| VM-001 | Beliebig viele logische Zähler; Verbrauch/Einspeisung getrennt aktivierbar; stabile UUID; eindeutige fachliche Kennung | teilweise: mehrere logische Zähler und optionale Zählernummer; vollständige physische Zählerwechselhistorie offen |
-| VM-002 | Individuelle Tarife, Netto/Brutto, MwSt., Grundpreise, Gültigkeitszeiträume | teilweise: Netto-Arbeitspreise Bezug/Einspeisung, daraus berechnete Bruttopreise, MwSt., Grundpreis und Intervall konfigurierbar; Preisgültigkeits-Historie offen |
-| VM-003 | Beliebig viele physische Zählerwechsel; historische Abschnitte; Abrechnung läuft weiter | offen |
-| VM-004 | Hochrechnung mit Verbrauch, Einspeisung, Kosten, Grundpreis, MwSt., Zahlungen und Wechseln | teilweise: Prognosen für Verbrauch/Einspeisung, Periodenkosten, Grundpreis und Zahlungstermine vorhanden; vollständige Wechselhistorie und Abrechnungssnapshots offen |
-| VM-005 | Individuelle Abschläge, Soll/Ist-Zahlungen und Gültigkeitshistorie | teilweise: vertragliche Monatsabschläge, Monatswerte und Buchungshistorie vorhanden; weitergehende Gültigkeitshistorie offen |
-| VM-006 | Beliebig viele Sonderzahlungen, Gutschriften und Korrekturen | umgesetzt: getrennte, zugeordnete Buchungsarten mit dauerhafter Speicherung |
-| VM-007 | Zentrale Konfiguration unter Einstellungen → VerbrauchsMonitor/Zählerdaten | teilweise: zentrale Hub-Verwaltung über Config Flow und Options Flow; einzelne Verwaltungsabläufe bleiben mehrstufig |
-| VM-008 | Individuelle Abrechnungszeiträume und optionale Enddaten | offen |
-| VM-009 | Optionale DB; Abrechnung unabhängig von DB; Status und Wiederherstellung | teilweise: lokale SQLite-Datenbank mit Status, Optimierung, JSON-Import/-Export, Einzel-Backup und Reset; vollständige DB-unabhängige Abrechnung und mehrstufige Wiederherstellung offen |
-| VM-010 | Deutsch/Englisch, getrennte Backend-/Frontend-Übersetzungen | technisch umgesetzt: deutsche und englische Übersetzungsschlüssel sind synchron; vollständige Sichtprüfung in einer laufenden HA-Oberfläche bleibt Zielsystemtest |
-| VM-011 | Geplante Zählerwechsel mit Erinnerungen und getrennter Ist-Dokumentation | offen |
-| VM-012 | Erinnerungen und Vorbereitung des nächsten Abrechnungszeitraums | offen |
-| VM-013 | Unveränderlicher Snapshot 30 Minuten vor Abrechnungsende | offen |
-| VM-014 | Über-Informationen mit Version, Entwickler und Supportkontakt | offen |
-| VM-015 | Anzeigename und Zählernummer; Korrektur und physischer Wechsel getrennt behandeln | offen |
-| VM-016 | Plausibilisierte automatische Wechselerkennung mit Nutzerbestätigung | offen |
-| VM-017 | Regelmäßige Sicherungen 00/06/12/18 Uhr und 23:30 Uhr | offen |
-| VM-018 | Neustart-/Shutdown-Verhalten ohne Nachholung verpasster Sicherungen | offen |
-| VM-019 | Integrationsinterne, dauerhafte und DB-unabhängige Datenhaltung | offen |
-| VM-020 | DB-Ausfall darf Abrechnung und Hochrechnung nicht beeinträchtigen | offen |
-| VM-021 | DB-Historie, Prognosehistorie, Wochenaggregate und Aufbewahrung | offen |
-| VM-022 | Live-Zählerstände sofort aktualisieren und dauerhaft sichern | offen |
-| VM-023 | Direkte Zuordnung vorhandener HA-Sensoren; maximal je eine Entität pro Richtung/Messart | teilweise: Zählerstand und Momentanleistung je Richtung sowie optionale Außenhelligkeit zuordenbar |
-| VM-024 | Einzelabrechnung je Zähler und Gesamtübersicht über alle Stromzähler | offen |
-| VM-025 | Fehlende/ungültige Messwerte je Entität überwachen: 24h ohne Update, 1h unknown/unavailable | offen |
-| VM-026 | Livewerte unverzögert; Abrechnungswerte plausibilisiert; Median-/Ausreißerlogik fachlich absichern | offen |
-| VM-027 | Optionale Momentanleistung Verbrauch und Einspeisung in W | teilweise: Quell-Entitäten konfigurierbar und live gespiegelt; Plausibilisierung offen |
-| VM-028 | Gesamt-Live-Saldo: Verbrauchsleistung minus Einspeiseleistung | offen |
-| VM-029 | Hauptkarte mit Gesamtwerten und kompakten Einzelzählern | teilweise: responsive Karte je logischem Zähler mit Live- und Tarifdaten; automatische Ressourcenregistrierung im Lovelace-Storage-Modus; Aggregation und Tages-/Finanzwerte offen |
-| VM-030 | Zählerdetail als modales Fenster; Abrechnung innerhalb desselben Dialogs | offen; separate Abrechnungskarte R033 vorhanden |
-| VM-031 | Aktueller Saldo und Prognose getrennt darstellen | umgesetzt: aktueller Kontostand und erwarteter Prognosewert werden getrennt ausgegeben |
-| VM-032 | Prognoseverfahren je Zähler und Messrichtung konfigurierbar | teilweise: Prognosen sind je Quellzähler und Messrichtung aktivierbar und zuordenbar; freie Wahl verschiedener Prognosealgorithmen ist nicht vorgesehen |
-| VM-033 | Lineare und saisonale Prognose; automatische lineare Übergangsmethode bei Datenmangel | teilweise: R080 nutzt Recorder-Monatsprofile ab 12 Monaten und Zwei-Zyklen-Prüfung ab 24 Monaten; Fallback bei Datenmangel |
-| VM-034 | Historische Wochen-/Saisonwerte langfristig nutzen; jüngere Datengewichtung noch festzulegen | teilweise: Recorder-Langzeitstatistiken bevorzugt, Detailhistorie als Fallback; monatliche und saisonale Tagesraten |
-| VM-035 | Prognosequalität und Datenbasis in der Karte darstellen | teilweise: Zuverlässigkeitsindex und Historien-/Qualitätsattribute vorhanden; weitergehende Datenbasisdarstellung offen |
-| VM-036 | Prognosebewertung wöchentlich, quartalsweise und zum Abrechnungsabschluss | offen |
-| VM-037 | Einzelzuverlässigkeit je Zähler/Messrichtung und gleichberechtigte Gesamtzuverlässigkeit | teilweise: Einzelzuverlässigkeit je Zähler/Richtung; aggregierte Gesamtzuverlässigkeit offen |
-| VM-038 | Bewertungslogik mit simulierten Daten prüfen und versionieren | offen |
-| VM-039 | Prognoseverfahren intern vergleichen; keine automatische Umstellung ohne geprüfte Regeln | offen |
-| VM-040 | Vollständige Lovelace-Karte, Dialoge, Editor, responsive Darstellung und Übersetzungen | teilweise: Live-Karte plus separate responsive Abrechnungskarte R033; Dialoge, historische Wechselverwaltung und vollständige Kartenkonfiguration offen |
-| VM-041 | Supportdiagnose mit Vorschau, Redaktion und ausdrücklicher Zustimmung | offen |
-| VM-042 | SemVer, Updatehinweise, Dokumentation, Logo, Tests und saubere Deinstallation | offen |
+| Contracts/meters | Multiple contracts and logical meters; stable IDs; optional meter number and source entities | Implemented in config-entry options; verify multi-meter runtime |
+| Accounting | Consumption and feed-in remain separate | Covered by domain and regression tests; target-system verification remains |
+| Tariffs | Net/gross, configurable VAT including 0%, work price, base price, feed-in remuneration | Domain tests; historical tariff validity remains a known project gap |
+| Monthly advances | Per-meter, per-direction, per-month overrides; zero valid; negative invalid; no automatic propagation | Unit/regression coverage; live form/reload verification remains |
+| History | Previous monthly override versions retained; unchanged values do not create versions | Regression coverage |
+| Payments | Advances, additional payments, credits, and corrections remain distinct | Existing ledger tests; verify imported legacy data in target system |
+| Balances | Recalculate from the correct costs, revenues, and allocated bookings | Domain tests; verify immediate sensor refresh in target system |
+| Database | SQLite integrity, backup, optimize, import/export, confirmed reset | Unit tests; real HA filesystem/runtime verification remains |
+| Entity naming | Central canonical IDs; migration only for this integration's registry entries | Mapping tests; real registry migration must be tested in HA |
+| Forecast | Initial local profile forecast without requiring 12 months of own history; separate consumption/feed-in models; astronomical season, solar position, calculated sunrise/sunset, daylight duration for both directions, selected feed-in directions, and history-based seasonal learning | Forecast-model tests; Recorder and location behavior require target-system validation |
+| Reliability | Extensible A/B reliability modules; one displayed percentage; missing history omitted; no artificial floor or random initialization; further modules register dynamically | Unit tests for six-hour expiry, measured comparisons, and evidence fallback; Recorder runtime validation remains |
+| Dashboard | Mark initial reliability distinctly; allow provisional recommendations only when at least two future payment dates remain and a positive payment gap remains after booked/scheduled payments | Source-level frontend tests; visual HA test remains |
+| Localization | German fallback and English UI; matching translation keys | JSON/key-parity tests |
+| Documentation | English README and technical guides | Updated for this package |
 
-## Grundsatz
-Keine Anforderung wird aus Umfangs- oder Implementierungsgründen stillschweigend entfernt,
-vereinfacht oder als erledigt markiert. Abweichungen müssen begründet und abgestimmt werden.
+## Known limitations requiring explicit runtime or future work
+
+- A full Home Assistant startup/reload/unload cycle has not been executed in this isolated test environment.
+- Recorder long-term statistics and detail-history availability depend on the user's HA database and retention settings.
+- Entity-registry migration must be validated against a real pre-update registry backup before production use.
+- Responsive card rendering and selector layout require browser testing in Home Assistant.
+- Historical tariff validity snapshots and immutable end-of-period billing snapshots remain separate project requirements and are not claimed as implemented by this package.
 
 
-## Zahlungsstatus – verbindliche Abgrenzung (R071)
-Vertraglich fällige Monatsabschläge werden ohne gesonderten Zahlungsnachweis als angerechnete Zahlungen behandelt und reduzieren den offenen Betrag. Ein gespeicherter Abschlag der Art `advance` ersetzt den automatisch berechneten Betrag für seinen Monat; er wird nicht zusätzlich angerechnet. Buchungen der Art `payment` sind Sonderzahlungen und werden zusätzlich berücksichtigt. Die Dashboard-Zeile „Tatsächlich geleistete Abschläge“ entfällt. „Gesamt geleistete Zahlungen“ entspricht den angerechneten Abschlägen plus Sonderzahlungen. Die Buchungshistorie bleibt für Nachvollziehbarkeit und Sonderfälle erhalten.
+## R119 additions
 
-## Vertragsassistent R067
-
-Der Vertragsassistent besteht aus genau zwei Schritten. Schritt 1 erfasst Anbieter, Vertragsname/-nummer, Vertragsbeginn/-änderung, Abrechnungszeitraum-Beginn, Laufzeit in Monaten und ein davon unabhängiges Vertragsende. Das Abrechnungszeitraum-Ende wird aus Beginn und Laufzeit abgeleitet und gespeichert. Schritt 2 erfasst primären und optionalen sekundären Abrechnungsbereich sowie die zugehörigen Tarif-/Steuerwerte und schließt mit „Fertigstellen“ ab. Ein separater dritter Schritt entfällt.
-
-## Abrechnungskarte R067
-
-Verbrauch und Einspeisung werden in der Anzeige fachlich getrennt. Verbrauch weist Kosten, anteiligen Verbrauchsgrundpreis, Abschläge, Sonderzahlungen, Gutschriften, Gesamtkosten und offenen Betrag aus. Einspeisung weist Vergütung, Gesamtvergütung und offenes Guthaben aus; Verbrauchsgrundpreis und Verbrauchsabschläge sowie der Zahlungsbereich „Bereits gezahlt“ werden dort nicht dargestellt. Die zugrunde liegenden Buchungen und Zählerhistorien bleiben erhalten.
-
-### Abschläge: Fälligkeit und Zahlung (aktualisierte Projektregel)
-
-Jeder Monatserste innerhalb des Abrechnungszeitraums gilt automatisch als geleisteter vertraglicher Monatsabschlag. Eine manuelle Zahlungsbestätigung ist nicht erforderlich. Eine explizite, dem Zähler und der Abrechnungsrichtung zugeordnete Abschlagsbuchung ersetzt den automatischen Monatsbetrag dieses Monats, damit keine Doppelzählung entsteht. Zukünftige Monatserste werden nur als erwartete Zahlungen in der Prognose berücksichtigt und reduzieren den aktuellen Kontostand nicht.
+- Monthly advance corrections remain individually editable by month, reject negative values, accept zero, retain audit history, and reload balance entities after saving without changing the recurring contract advance.
+- Billing elapsed time and accrued annual base price use the current local timestamp rather than whole-month rounding.
+- Current consumption/feed-in power is displayed below the respective reading when configured.
+- Data management offers separate direct navigation to reset scopes and database administration.
+- Release metadata is centralized and exposed in the About dialog as version, stage, and revision placeholders.
+- Fixed numeric reference scenario asserts expected forecast amounts and account balance to the cent.
+- Compass-direction selection field identifiers are no longer UUID-based and old meter-editor compass field is removed; legacy values are used as a fallback during reconfiguration. The two-column visual layout of native Home Assistant selector controls still requires a live UI-specific implementation/verification.
 
 
-## Kontostand und Anzeige (R071)
-Der Kontostand verwendet das Vorzeichen aus Kundensicht: negative Werte sind Verbindlichkeiten, positive Werte Guthaben. Die Dashboard-Karte zeigt je nach Vorzeichen „Offener Betrag“, „Offenes Guthaben“ oder „Ausgeglichen“ und kennzeichnet diese Zustände rot, grün bzw. grau. Verbrauch und Einspeisung bleiben getrennte Konten.
+## R124 additions
 
-Der jährliche Grundpreis steht in der Verbrauchskarte als grauer Klammerwert hinter „Anteiliger angefallener Grundpreis:“; der rechte Betrag ist der anteilige Grundpreis des Abrechnungszeitraums.
+- Solar geometry now affects both consumption and feed-in future profiles. The consumption prior uses a bounded daylight/solar-elevation feature; feed-in additionally uses all selected compass directions. History-based projections retain historical monthly rates as the dominant signal and apply only a bounded correction to future days.
+- Local sunrise and sunset are calculated from Home Assistant coordinates, date, and configured timezone. No external solar/weather service is used.
+- Monthly advance recommendations are suppressed when fewer than two future payment dates remain or no positive payment gap remains after actual bookings and future scheduled payments. The former 70% floor is removed because it could contradict credits or scheduled payments.
+- Current power is aligned to the right of the compact period-progress subline for both directions. The thin divider below current power is removed.
+- The season label is shown above the forecast heading; expected balance and reliability follow the heading without a redundant divider.
+- The two-column compass selector remains a known UI limitation pending a custom config-flow frontend.
 
+## R125 performance requirement
 
-## R073 – Prognose-Grundfunktion
-
-- Prognosen sind je logischem Zähler und Richtung separat aktivierbar.
-- Verbrauch ist standardmäßig aktiv, Einspeisung standardmäßig deaktiviert.
-- Jede aktivierte Richtung erhält eine Prognose des Periodenendsaldos und einen empfohlenen Monatsabschlag.
-- Der Einspeiseabschlag ist ein eigener, tatsächlicher Brutto-Auszahlungsbetrag.
-- Prognosen verändern weder Buchungen noch den aktuellen Kontostand.
-- R073 verwendet zunächst die lineare Hochrechnung des bisherigen Periodendurchschnitts.
+- Forecast entity `native_value` access must remain constant-time and must never run forecast calculations synchronously. Expensive projection work runs in the executor from an asynchronously refreshed, serialized cache.
 
 
-## R074 – Sichtbare Prognose in der Abrechnungskarte
+## R126 additions
 
-Die Prognose wird in der Verbrauchs- bzw. Einspeisespalte unmittelbar unter dem offenen Betrag/Guthaben angezeigt. Der neutrale hellgraue Bereich verwendet dunkle Schrift. Der notwendige monatliche Abschlag ist die visuell wichtigste Kennzahl und wird groß und fett dargestellt. Der erwartete Abrechnungssaldo wird zusätzlich gezeigt. Saison-/Season-Auswahl und saisonale Prognosemodelle sind weiterhin offen.
-
-
-## Monatsabschläge
-
-Die Verwaltung erfolgt unter „Abrechnungen und Abschläge“. Nach Auswahl eines Stromzählers werden die Monate vom individuellen Abrechnungsbeginn bis einschließlich des aktuellen Home-Assistant-Monats angeboten. Zukünftige Monate erscheinen nicht. Verbrauch und Einspeisung werden getrennt bearbeitet. Die gespeicherten Monatswerte sind gemeinsame Berechnungsgrundlage für Kontostände und Prognosen.
+- Forecast-card order: season, reliability, forecast end heading, expected billing balance, and a monthly recommendation only when payment-date and positive-payment-gap rules permit it.
+- Current consumption/feed-in power shares the progress metadata row, uses 10px text with an 8px label/value gap, and keeps the Watt value right-aligned.
+- Exactly one thin divider separates the progress/current-power metadata row from the tariff row. The tariff row has no bottom divider where the thicker finance-section divider follows.
+- Automated source-level tests cover the approved ordering, spacing, and divider placement. Live Home Assistant browser verification remains required.
 
 
-## R109 – Globale Jahreszeiten und Prognose
+## R127 additions
 
-- Jahreszeiten werden astronomisch und lokal anhand der Home-Assistant-Koordinaten bestimmt.
-- Nord- und Südhalbkugel werden korrekt unterschieden; feste deutsche Kalendertage und Season-Integration sind nicht erforderlich.
-- Die Oberfläche zeigt die berechnete Jahreszeit nur lesend an; eine manuelle Einstellung entfällt.
-- Prognosesensoren aktualisieren sich beim Start, bei Quellwertänderungen und stündlich.
-- Prognosefehler bleiben als Sensorattribute und ERROR-Protokolleinträge nachvollziehbar.
-- Automatisierte Regressionstests prüfen die Ereignisgrenzen und beide Hemisphären.
+- Forecast card order is season, forecast heading, reliability, expected billing balance, then monthly advance recommendation or a reason-specific explanation.
+- Reliability must appear immediately below the forecast heading. A and B are internal modules aggregated into one percentage. Missing measurement history is omitted; no random initial value or artificial floor is allowed. Further modules can be registered dynamically.
+- Suppressed recommendations must not leave an unexplained blank area; the UI explains final-payment-period protection, a fully covered forecast amount, or insufficient measured reliability.
+- Final-payment-period protection diagnostics must reflect the active `months_remaining < 2` rule.
+
+
+## R128 – Himmelsrichtungen je Einspeisungszähler
+- Die Himmelsrichtung wird ausschließlich am jeweiligen Einspeisungszähler konfiguriert, nicht global im Prognosedialog.
+- Mehrfachauswahl von Norden, Osten, Süden und Westen ist zulässig; eine leere Auswahl ist ebenfalls zulässig.
+- Neue Einspeisungszähler erhalten standardmäßig Süden.
+- Bestehende Einzel- und Mehrfachauswahlen werden migrationssicher in die per-Zähler-Liste überführt.
+- Ohne Auswahl bleibt die Einspeisungsprognose verfügbar und verwendet ein neutrales Vier-Richtungen-Profil. Mehrfachauswahlen werden mangels Flächen-/Leistungsgewichtung gleichgewichtet kombiniert.
+- Die zweispaltige Darstellung der nativen Home-Assistant-Formularauswahl bleibt offen.

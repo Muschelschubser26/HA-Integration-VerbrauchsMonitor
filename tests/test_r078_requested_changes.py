@@ -25,11 +25,11 @@ def test_forecast_card_matches_confirmed_layout():
 
 def test_device_manufacturer_and_package_metadata():
     sensor = (ROOT / "custom_components/verbrauchsmonitor/sensor.py").read_text()
-    assert sensor.count('"manufacturer": "Muschelschubser26 & ChatGPT"') == 3
+    assert sensor.count('"manufacturer": "Muschelschubser26 & ChatGPT"') == 5
     manifest = json.loads((ROOT / "custom_components/verbrauchsmonitor/manifest.json").read_text())
     hacs = json.loads((ROOT / "hacs.json").read_text())
     assert manifest["domain"] == "verbrauchsmonitor"
-    assert manifest["documentation"] == "https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor-Beta"
+    assert manifest["documentation"] == "https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor"
     assert hacs["name"] == "VerbrauchsMonitor"
 
 

@@ -25,20 +25,20 @@ def test_purchase_price_defaults_use_german_decimal_comma():
 
 def test_additional_values_is_not_in_management_menu():
     source = (INTEGRATION / "config_flow.py").read_text()
-    assert 'menu_options=["contracts", "meters", "forecast", "billing", "data_management", "about"]' in source
+    assert 'menu_options=["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"]' in source
     for language in ("de", "en"):
         data = json.loads((INTEGRATION / f"translations/{language}.json").read_text())
         assert "additional_values" not in data["options"]["step"]["init"]["menu_options"]
 
 def test_billing_card_groups_costs_payments_and_total_balance():
     card = (INTEGRATION / "frontend/verbrauchsmonitor-card.js").read_text()
-    for label in ("Aktueller Abrechnungszeitraum", "Bereits gezahlt", "Offener Betrag", "Anteiliger angefallener Grundpreis"):
+    for label in ("Aktueller Abrechnungszeitraum", "Bereits bezahlt", "Offener Betrag", "Anteiliger Grundpreis"):
         assert label in card
 
 
 def test_annual_base_price_is_prorated_and_additional_payments_are_counted():
     sensor = (INTEGRATION / "sensor.py").read_text()
-    assert "base_gross_annual * Decimal(months) / Decimal(12)" in sensor
+    assert "accrued_annual_base_price(base_gross_annual, billing_start_dt, now_local)" in sensor
     ledger = (INTEGRATION / "ledger.py").read_text()
     assert 'elif kind == "payment":' in ledger
     assert "additional_payments += amount" in ledger

@@ -6,7 +6,7 @@ INTEGRATION = ROOT / "custom_components" / "verbrauchsmonitor"
 
 def test_annual_base_price_is_shown_in_grey_parentheses_without_monthly_label():
     card = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text()
-    expected = 'withColon(t("Anteiliger angefallener Grundpreis","Prorated base price")))} <span class="informational">(${money(base)})'
+    expected = 'withColon(t("Anteiliger Grundpreis","Prorated base price")))} <span class="informational">(${money(base)})'
     assert expected in card
     assert '(${t("mtl.","monthly")} ${money(monthlyBase)})' not in card
 
@@ -33,7 +33,8 @@ def test_signed_customer_balance_is_used_for_amount_credit_and_neutral_states():
 
 def test_fällige_advances_are_subtracted_from_consumption_balance():
     sensor = (INTEGRATION / "sensor.py").read_text()
-    assert 'advances = money_amount(expected_advances)' in sensor
+    assert 'advances = money_amount(expected_advance_amount)' in sensor
+    assert 'expected_advances_total' in sensor
     assert 'credit_effect = credits if self._direction == "feed_in" else -credits' in sensor
     assert 'energy_amount + base_gross + extra_charges' in sensor
 

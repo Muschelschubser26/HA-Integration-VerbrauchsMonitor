@@ -1,109 +1,138 @@
-# VerbrauchsMonitor
+<p align="center">
+  <img src="assets/verbrauchsmonitor-banner.png" alt="VerbrauchsMonitor – Smarte Energieübersicht" width="100%">
+</p>
 
-Home Assistant custom integration for the local management of electricity meters, contracts, tariffs, billing periods, payments, and consumption/feed-in forecasts.
+<p align="center">
+  <a href="#funktionen">Funktionen</a> ·
+  <a href="#screenshots">Screenshots</a> ·
+  <a href="#installation">Installation</a> ·
+  <a href="CHANGELOG.md">Changelog</a> ·
+  <a href="docs/">Dokumentation</a> ·
+  <a href="https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor/issues">Fehler melden</a>
+</p>
 
-**Project identifier:** `ha-verbrauchsmonitor`  
-**Integration domain:** `verbrauchsmonitor`  
-**SemVer:** `0.0.2`  
-**Package version:** `Beta R115`
+<h1 align="center">VerbrauchsMonitor</h1>
 
-German is the default language. The user interface also supports English and follows the language configured in Home Assistant. All processing and storage take place locally in Home Assistant. There is no unsolicited cloud communication or telemetry.
+<p align="center">
+  <strong>Stromverbrauch, Einspeisung, Abrechnung und Energie-Forecast direkt in Home Assistant im Blick.</strong><br>
+  Lokale Datenhaltung · Deutsche und englische Oberfläche · Keine Cloud-Telemetrie
+</p>
 
-## Features
+<p align="center">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.0.1-blue">
+  <img alt="Home Assistant" src="https://img.shields.io/badge/Home%20Assistant-2026.11.1%2B-18BCF2">
+  <img alt="License" src="https://img.shields.io/github/license/Muschelschubser26/HA-Integration-VerbrauchsMonitor">
+</p>
 
-- Multiple logical electricity meters and multiple contracts within one integration.
-- Optional assignment of consumption and feed-in meter readings, as well as optional power and outdoor brightness entities.
-- Separate billing directions for electricity consumption and feed-in.
-- Contract and tariff management with net/gross inputs, configurable VAT, and separate price types.
-- Billing periods, initial meter readings, and history of the origin and changes of initial values.
-- Local booking management for monthly instalments, special payments, credits, and corrections.
-- Separate account balances for consumption and feed-in.
-- Forecasts per source meter and billing direction; seasonal weighting is only used when sufficient Recorder history and data quality are available.
-- Dedicated Lovelace billing card with selection of logical meter and billing direction.
-- Database status, optimization, import/export, and reset functions through the integration interface.
+Der **VerbrauchsMonitor** ist eine Custom Integration für Home Assistant zur lokalen Verwaltung und Auswertung von Stromzählern. Er verbindet Messwerte für Verbrauch und Einspeisung mit Vertrags- und Tarifdaten, Abrechnungszeiträumen, Zahlungen, Kontoständen und Energieprognosen.
 
-The availability of individual input fields and displays depends on the configuration. Optional data sources that have not been configured are not replaced with supposedly valid measurement values.
+**Repository:** [Muschelschubser26/HA-Integration-VerbrauchsMonitor](https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor)  
+**Domain:** `verbrauchsmonitor`  
+**Produktivversion:** `0.0.1`  
+**Entwicklungsbasis:** `0.0.2-beta.1` · interne Revision `R0171`  
+Frühere Beta-Stände, darunter Beta R161, sind im Changelog dokumentiert.
 
-## Requirements
+Die Verarbeitung und Speicherung erfolgen lokal in Home Assistant. Die Integration initiiert keine Cloud-Kommunikation und sendet keine Telemetrie.
 
-- Home Assistant Core **2026.11.1 or newer** (project target according to `hacs.json`; actual compatibility must be verified in the target installation).
-- One or more Home Assistant sensor entities providing meter readings. Power values and outdoor brightness are optional.
-- Seasonal forecasts require suitable Recorder long-term statistics or sufficient existing detailed history.
+---
 
-The integration has no additional Python runtime dependencies beyond those provided by the Home Assistant environment (`manifest.json`: `requirements` is empty).
+## Funktionen
+
+<div align="center">
+
+| Zähler und Messwerte | Verträge und Abrechnung |
+|:--|:--|
+| Verbrauchs- und Einspeisezähler | Verträge, Tarife und Abrechnungszeiträume |
+| Tages-, Wochen-, Monats- und Jahreswerte | Monatsabschläge und einzeln änderbare Monatsbeträge |
+| Aktuelle Leistung und Energieverläufe | Buchungen, Zahlungen und Kontostände |
+| Mehrere logische Zähler und Richtungen | Abrechnungs- und Prognoseübersichten |
+
+| Prognose und Zuverlässigkeit | Datenverwaltung |
+|:--|:--|
+| Verbrauchs- und Einspeiseprognosen | Lokale SQLite-Datenbank |
+| Saison-, Tageszeit- und Sonnenpositionsbezug | Datenbankinformationen und Sicherungsgrundlagen |
+| Getrennte Bewertung für Verbrauch und Einspeisung | Recorder-Entitäten als YAML exportieren |
+| Transparente Zuverlässigkeitsanzeige | Migrations- und Diagnoseinformationen |
+
+</div>
+
+## Screenshots
+
+Die folgenden Ansichten stammen aus Home Assistant und zeigen die Karten des VerbrauchsMonitors.
+
+<table>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/Stromzähler-Verbrauch.PNG" alt="Verbrauchszählerkarte" width="100%">
+      <br><strong>Verbrauchszählerkarte</strong>
+    </td>
+    <td width="50%" align="center">
+      <img src="assets/Stromzähler-Einspeisung.PNG" alt="Einspeisezählerkarte" width="100%">
+      <br><strong>Einspeisezählerkarte</strong>
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" align="center">
+      <img src="assets/Summenzähler-Verbrauch.PNG" alt="Summenzähler Verbrauch" width="100%">
+      <br><strong>Summenzähler – Verbrauch</strong>
+    </td>
+    <td width="50%" align="center">
+      <img src="assets/Summenzähler-Einspeisung.PNG" alt="Summenzähler Einspeisung" width="100%">
+      <br><strong>Summenzähler – Einspeisung</strong>
+    </td>
+  </tr>
+</table>
 
 ## Installation
 
-### Manual installation
+### Voraussetzungen
 
-1. Create a Home Assistant backup before updating.
-2. Copy the `custom_components/verbrauchsmonitor/` directory from this project to `/config/custom_components/verbrauchsmonitor/`.
-3. Completely replace any existing integration directory; do not leave old files in the directory.
-4. Fully restart Home Assistant.
-5. Go to **Settings → Devices & Services → Add Integration**, search for **VerbrauchsMonitor**, and start the setup.
-6. After setup, open the integration options to manage additional contracts, meters, billing periods, bookings, and forecasts.
+- Home Assistant Core **2026.11.1 oder neuer**
+- Mindestens ein gültiger Quellzähler als Home-Assistant-Sensor
+- Für historische Prognosegrundlagen: verfügbare Recorder-Historie bzw. Langzeitstatistiken
 
-### Lovelace card
+### Installation über HACS
 
-In Lovelace storage mode, the integration registers the card resource automatically. Then reload the dashboard or browser and search for **VerbrauchsMonitor** under **Add Card**.
+1. HACS öffnen und zu **Integrationen** wechseln.
+2. Über das Menü **Benutzerdefinierte Repositories** öffnen.
+3. Repository-URL eintragen:  
+   `https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor`
+4. Kategorie **Integration** auswählen und hinzufügen.
+5. Nach „VerbrauchsMonitor“ suchen und die Integration installieren.
+6. Home Assistant vollständig neu starten.
+7. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** den VerbrauchsMonitor auswählen und konfigurieren.
 
-When using YAML resource mode, the following resource must be added as a module:
+### Manuelle Installation
 
-`/verbrauchsmonitor/verbrauchsmonitor-card.js`
+1. Vor Änderungen ein vollständiges Home-Assistant-Backup erstellen.
+2. Den Ordner `custom_components/verbrauchsmonitor/` aus diesem Paket vollständig nach `/config/custom_components/verbrauchsmonitor/` kopieren. Den alten Integrationsordner vollständig ersetzen, nicht Dateien zusammenführen.
+3. Home Assistant vollständig neu starten.
+4. Den VerbrauchsMonitor unter **Einstellungen → Geräte & Dienste** hinzufügen bzw. konfigurieren.
+5. Nach dem Neustart das Dashboard neu laden.
 
-Each card instance is configured for one logical meter and one billing direction (consumption or feed-in). Additional meters or billing directions require a separate card instance.
+Details und Updatehinweise stehen in der [Installations- und Updateanleitung](docs/INSTALLATION.md).
 
-## Configuration and operation
+## Wichtige Hinweise
 
-Initial setup is performed through the Config Flow. Subsequent changes are made through the integration's Options Flow.
+- Monatsabschläge können je Monat einzeln bearbeitet werden. Der laufende Vertragsabschlag wird dadurch nicht automatisch fortgeschrieben.
+- Die Auswahl für zukünftige Monatsbeträge beginnt beim nächsten Monat und umfasst höchstens sieben zulässige Monate. Jahreswechsel werden berücksichtigt; die Änderung gilt innerhalb des Abrechnungszeitraums bis zu dessen Ende.
+- Die Zuverlässigkeitsanzeige basiert auf tatsächlich verfügbaren historischen Daten. Bei unzureichender Recorder-Historie wird kein künstlicher Prozentwert erzeugt.
+- Die Zuverlässigkeit ist eine datenbasierte Einschätzung und keine Garantie für die Höhe einer späteren Abrechnung.
 
-- **Contracts:** Contract name and details, billing period, energy price or feed-in tariff, base price, VAT, and agreed monthly instalments.
-- **Meters:** Logical meter name, optional meter number, and source entities for consumption and feed-in.
-- **Billing:** Billing start, meter reading baselines, and billing values.
-- **Bookings:** Special payments, credits, and corrections assigned to a meter and billing direction.
-- **Monthly instalments:** Monthly amounts can be maintained separately for each meter and billing direction.
-- **Forecasts:** Consumption and feed-in forecasts can be enabled and assigned separately.
-- **Data management:** Database information, optimization, export/import, and reset actions requiring confirmation.
+## Dokumentation und Support
 
-### Monthly instalments and account balance logic
+- [Installations- und Updateanleitung](docs/INSTALLATION.md)
+- [Architektur](docs/ARCHITEKTUR.md)
+- [Anforderungen](docs/ANFORDERUNGEN.md)
+- [Datenbankmigration](docs/DATENBANK_MIGRATION_R169.md)
+- [Zuverlässigkeitsmodell](docs/ZUVERLAESSIGKEIT.md)
+- [Changelog](CHANGELOG.md)
+- [Offene Punkte und Laufzeitprüfungen](docs/OFFENE_PUNKTE.md)
+- [Fehler melden / Fragen stellen](https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor/issues)
 
-A contractually agreed monthly instalment is automatically treated as paid on the first day of each month within the respective billing period. No manual payment confirmation is required. An explicitly assigned instalment booking replaces the automatic amount for the same month to prevent double counting. Consumption and feed-in instalments are processed separately. Future first days of the month are treated as expected payments in forecasts and do not change the current account balance.
+---
 
-Credits and corrections are stored as separate, traceable bookings. Account balances follow the customer's perspective: negative values represent an amount owed, while positive values represent a credit balance.
-
-## Storage and privacy
-
-The integration configuration is stored in the Home Assistant Config Entry data. Business-related bookings and other persistent integration data are stored locally in SQLite.
-
-The main database is located at `/config/verbrauchsmonitor.db`; the continuously updated single backup database is located at `/config/verbrauchsmonitor-backup.db`.
-
-The previous JSON data store at `.storage/verbrauchsmonitor_data.json` is migrated to SQLite once during the first startup and remains unchanged as a migration source. JSON remains the portable format for data export and import.
-
-The backup is created consistently using the SQLite Backup API. SQLite WAL and transaction mechanisms protect the active data set.
-
-No credentials for external services are required. There is no automatic telemetry and no unsolicited transmission of meter or contract data. Follow the displayed instructions before reset or import operations and create a Home Assistant backup before making major changes.
-
-## Updates and restart
-
-- Changes to Python files, `manifest.json`, or dependencies: fully restart Home Assistant.
-- Changes exclusively to the Lovelace JavaScript card: reload the dashboard/browser; update the browser cache if necessary.
-- Changes to integration options: saving triggers a Config Entry reload.
-
-A Config Entry reload does not re-import modified Python modules and therefore does not replace a full Home Assistant restart after a code update.
-
-## Documentation and tests
-
-- `docs/ARCHITEKTUR.md`: Components, data flow, and storage responsibilities.
-- `docs/INSTALLATION.md`: Installation and operating instructions.
-- `docs/UPDATE_UND_RELOAD.md`: Update and reload behavior.
-- `docs/ANFORDERUNGEN.md`: Requirements list and implementation status.
-- `docs/OFFENE_PUNKTE.md`: Known limitations and required target-system checks.
-- `tests/`: Automated unit and regression tests.
-
-Automated tests are part of the development verification process. A successful automated test run does not replace a complete runtime test in a real Home Assistant installation.
-
-## License and contact
-
-The package includes a `LICENSE` file containing the MIT License text. The rights holder must separately confirm the legal authorization of this license before public distribution.
-
-Support: **Support@gehtdoch.eu**
+<p align="center">
+  <strong>VerbrauchsMonitor</strong><br>
+  Smarte Energieübersicht – lokal in Home Assistant.
+</p>

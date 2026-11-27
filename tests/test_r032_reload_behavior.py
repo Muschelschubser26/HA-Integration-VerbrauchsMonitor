@@ -11,7 +11,7 @@ def test_static_card_is_served_without_cache_headers():
 
 def test_card_asset_version_matches_revision():
     source = (INTEGRATION / "const.py").read_text()
-    assert 'INTEGRATION_VERSION: Final = "0.0.2-dev-r111"' in source
+    assert 'INTEGRATION_VERSION: Final = "0.0.1"' in source
 
 
 def test_options_updates_keep_native_entry_reload():
@@ -22,5 +22,5 @@ def test_options_updates_keep_native_entry_reload():
 
 def test_reload_document_distinguishes_frontend_and_python_changes():
     doc = (ROOT / "docs/UPDATE_UND_RELOAD.md").read_text()
-    assert "Dashboard bzw. Browser neu laden" in doc
-    assert "Vollständiger Home-Assistant-Neustart erforderlich" in doc
+    assert "Reload the dashboard/browser" in doc
+    assert "Restart Home Assistant completely" in doc

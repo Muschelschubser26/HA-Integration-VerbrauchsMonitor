@@ -18,6 +18,8 @@ def test_dashboard_calculates_advances_per_source_and_direction():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text(encoding="utf-8")
     assert 'financeFor(counter, "consumption", balance)' in source
     assert 'financeFor(feed, "feed_in", feedBalance)' in source
-    assert 'const advancePaid = Number.isFinite(Number(sourceAttributes.recorded_advances_paid))' in source
+    assert 'const groupedAdvanceTotal = monthlyAdvanceGroups.reduce' in source
     assert 'Bisher fällige Abschläge' not in source
-    assert 'automaticMonths' in source
+    assert 'monthlyAdvanceGroups' in source
+    assert 'groupedAdvanceTotal' in source
+    assert 'automaticMonths' not in source

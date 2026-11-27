@@ -38,8 +38,9 @@ def test_feed_in_balance_uses_its_own_monthly_advance_not_consumption_advance():
     source = (INTEGRATION / "sensor.py").read_text(encoding="utf-8")
     assert 'self._data.get("feed_in_monthly_advance", 0)' in source
     assert 'monthly_advance_gross=monthly_advance_gross' in source
-    assert 'advances = money_amount(expected_advances)' in source
-    assert '"recorded_advances_paid"] = float(advances)' in source
+    assert 'advances = money_amount(expected_advance_amount)' in source
+    assert 'expected_advances_total' in source
+    assert '"recorded_advances_paid"] = float(money_amount(paid_advances))' in source
 
 
 def test_feed_in_mirror_exposes_direction_specific_gross_monthly_advance():
@@ -64,8 +65,8 @@ def test_feed_in_only_contract_persists_advance_in_separate_canonical_field():
 
 def test_frontend_automatic_monthly_advances_apply_to_both_directions():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text(encoding="utf-8")
-    assert 'if (sourcePeriodStart && /^\\d{4}-\\d{2}-\\d{2}$/.test(sourcePeriodStart))' in source
-    assert 'const monthlyGross = Number(sourceAttributes.monthly_advance_gross ?? 0);' in source
+    assert 'monthlyAdvanceGroups' in source
+    assert 'monthlyAdvanceGroups' in source
 
 
 def test_example_feed_in_credit_after_eleven_monthly_payouts_is_338_08_eur():

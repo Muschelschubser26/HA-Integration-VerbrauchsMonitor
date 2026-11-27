@@ -30,8 +30,10 @@ def test_remaining_payment_months_determine_total_recommended_installment():
         + one_month["accrued_base_price_eur"]
         + one_month["remaining_costs_including_base_price_eur"], 2
     )
-    assert one_month["expected_year_end_balance_eur"] == -591.18
-    assert one_month["recommended_monthly_advance_eur"] == 791.18
+    assert one_month["expected_year_end_balance_eur"] == -585.36
+    assert one_month["recommended_monthly_advance_eur"] == 0.0
+    assert one_month["forecast_recommendation_available"] is False
+    assert one_month["forecast_recommendation_unavailable_reason"] == "final_payment_period"
     assert one_month["expected_year_end_balance_eur"] == round(-(one_month["annual_value_eur"] - 200), 2)
 
     two_months = forecast.calculate_forecast(
@@ -41,7 +43,9 @@ def test_remaining_payment_months_determine_total_recommended_installment():
         period_months=6, booked_advances=0, future_scheduled_advances=400,
     )
     assert two_months["months_remaining"] == 2
-    assert two_months["recommended_monthly_advance_eur"] == round(two_months["annual_value_eur"] / 2, 2)
+    assert two_months["recommended_monthly_advance_eur"] == round(
+        max(0, two_months["annual_value_eur"] - two_months["booked_advances_eur"] - two_months["future_scheduled_advances_eur"]) / 2, 2
+    )
 
 
 def test_first_of_each_month_is_automatically_counted_as_paid():
@@ -75,10 +79,10 @@ def test_first_of_each_month_is_automatically_counted_as_paid():
 def test_billing_card_displays_automatic_monthly_advances_as_paid_without_due_row():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text(encoding="utf-8")
     assert 'Bisher fällige Abschläge' not in source
-    assert 't("Erhaltene Abschläge","Advances received")' in source
-    assert 'withColon(t("Abschläge","Advances"))' in source
-    assert 'const advancePaid = Number.isFinite(Number(sourceAttributes.recorded_advances_paid))' in source
-    assert 'money(finance.advancePaid)' in source
+    assert 't("Gesamt geleistete Zahlungen","Total payments received")' in source
+    assert 'monthlyAdvanceGroups.map(group =>' in source
+    assert 'const groupedAdvanceTotal = monthlyAdvanceGroups.reduce' in source
+    assert 'money(finance.advancePaid+finance.additionalPayments+finance.corrections)' in source
 
 
 def test_actual_bookings_are_filtered_by_meter_and_assignment_before_sensor_creation():
@@ -90,5 +94,5 @@ def test_actual_bookings_are_filtered_by_meter_and_assignment_before_sensor_crea
 def test_monthly_average_remains_based_on_billing_start_and_no_unrequested_icon():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text(encoding="utf-8")
     assert "const billingStartTimestamp = periodStart;" in source
-    assert 't("Ø Aktuell im Monat","Average current month")' in source
+    assert 't("Ø im Monat","Average per month")' in source
     assert '<ha-icon icon="mdi:chart-box-outline"></ha-icon>' not in source

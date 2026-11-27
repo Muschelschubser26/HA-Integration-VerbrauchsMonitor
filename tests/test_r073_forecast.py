@@ -171,18 +171,18 @@ def test_two_year_method_requires_two_calendar_cycles():
 
 def test_reliability_index_has_low_medium_and_high_bands():
     high = _forecast.reliability_score(
-        history={"history_months": 24, "coverage_percent": 100, "gap_days_max": 1, "quality": 100},
+        history={"usable": True, "history_months": 24, "sample_count": 300, "coverage_percent": 100, "gap_days_max": 1, "quality": 100},
         method="seasonal_24m",
     )
     medium = _forecast.reliability_score(
-        history={"history_months": 12, "coverage_percent": 50, "gap_days_max": 14, "quality": 50},
+        history={"usable": True, "history_months": 12, "sample_count": 100, "coverage_percent": 50, "gap_days_max": 14, "quality": 50},
         method="linear_elapsed_period_average",
     )
     low = _forecast.reliability_score(history={}, method="linear_elapsed_period_average")
     assert high["forecast_reliability_percent"] >= 80
     assert medium["forecast_reliability_percent"] >= 50
     assert medium["forecast_reliability_percent"] < 80
-    assert low["forecast_reliability_percent"] < 50
+    assert low["forecast_reliability_percent"] is None
 
 
 def test_advance_recommendation_is_capped_at_30_without_history():
@@ -228,9 +228,9 @@ def test_five_month_billing_period_prorates_annual_base_price():
         vat_rate=19, annual_base_price_net="239.62", monthly_advance_net="168.06722689",
         period_months=5, booked_advances=0, future_scheduled_advances=200,
     )
-    expected_base = Decimal("239.62") * Decimal("1.19") * Decimal(5) / Decimal(12)
-    # R096: total projected cost is accrued energy/base cost plus the
-    # remaining-cost estimate derived from the current monthly average.
+    # The complete five-month period is prorated by its actual 153 calendar
+    # days, matching the live balance sensor's continuous annual-base-price rule.
+    expected_base = Decimal("239.62") * Decimal("1.19") * Decimal("153") / Decimal("365")
     assert Decimal(str(result["forecast_base_price_total_eur"])) == expected_base.quantize(Decimal("0.01"))
     assert Decimal(str(result["annual_value_eur"])) == (
         Decimal(str(result["accrued_energy_cost_eur"]))
@@ -257,9 +257,13 @@ def test_recommendation_uses_all_remaining_months_without_artificial_cap():
     )
     assert one_month["months_remaining"] == 1
     assert two_months["months_remaining"] == 2
-    assert one_month["recommended_monthly_advance_eur"] > 200
-    assert two_months["recommended_monthly_advance_eur"] == round(two_months["annual_value_eur"] / 2, 2)
-    assert one_month["recommended_monthly_advance_eur"] == one_month["annual_value_eur"]
+    assert one_month["recommended_monthly_advance_eur"] == 0.0
+    assert one_month["forecast_recommendation_available"] is False
+    assert one_month["forecast_recommendation_unavailable_reason"] == "final_payment_period"
+    assert two_months["recommended_monthly_advance_eur"] == round(
+        max(0, two_months["annual_value_eur"] - two_months["booked_advances_eur"] - two_months["future_scheduled_advances_eur"]) / 2, 2
+    )
+    assert two_months["forecast_recommendation_available"] is True
     assert one_month["expected_year_end_balance_eur"] == round(
         -(one_month["annual_value_eur"] - 200), 2
     )

@@ -1,25 +1,28 @@
-# Update- und Reload-Verhalten – VerbrauchsMonitor
+# Update and Reload Procedure
 
-Home Assistant importiert Python-Module beim Start. Ein Config-Entry-Reload entlädt und lädt die Integrationseinträge und ihre Plattformen neu, importiert bereits geladene Python-Dateien aber nicht erneut. Deshalb gelten folgende Regeln:
+## Before updating
 
-| Änderung | Erforderliche Aktion |
-|---|---|
-| Nur Lovelace-JavaScript/CSS geändert | Dashboard bzw. Browser neu laden; ggf. Cache aktualisieren. |
-| Vertrags-, Zähler- oder Optionsdaten über die Integrationsoberfläche geändert | Speichern verwendet den Config-Entry-Reload. |
-| Quell-Sensorzustand ändert sich | Die Integration aktualisiert abhängige Sensoren ereignisgesteuert bzw. über den jeweiligen Aktualisierungszyklus. |
-| Python-Dateien geändert | Vollständiger Home-Assistant-Neustart erforderlich. Ein Integrations-Reload reicht nicht zum erneuten Import des Codes. |
-| `manifest.json`, Plattformregistrierung oder Abhängigkeiten geändert | Home Assistant vollständig neu starten. |
-| YAML-Ressourcenmodus verwendet | Sicherstellen, dass `/verbrauchsmonitor/verbrauchsmonitor-card.js` als Ressource vom Typ `module` eingetragen ist; danach Dashboard neu laden. |
+1. Create a full Home Assistant backup.
+2. Keep a copy of the current `custom_components/verbrauchsmonitor/` directory.
+3. Do not delete `verbrauchsmonitor.db` or `verbrauchsmonitor-backup.db` during a normal integration update.
 
-## Updateablauf
+## Install Beta R122
 
-1. Vor dem Update ein Home-Assistant-Backup erstellen.
-2. Den vollständigen Ordner `custom_components/verbrauchsmonitor/` austauschen; keine alten Dateien im Integrationsordner zurücklassen.
-3. Bei Änderungen an Python, Manifest oder Plattformregistrierung Home Assistant vollständig neu starten.
-4. Nach reinen Frontend-Änderungen Dashboard/Browser neu laden.
-5. Nach dem Start die Integrationsdiagnose, vorhandene Zähler, Sensoren, Karten und Buchungen kontrollieren.
-6. Bei Datenbank- oder Schemaänderungen die im Releasebericht beschriebenen Migrationen und Hinweise beachten.
+1. Extract the archive.
+2. Replace `/config/custom_components/verbrauchsmonitor/` with the complete directory from `custom_components/verbrauchsmonitor/` in the archive.
+3. Ensure no files from an older version remain in the integration directory.
+4. Restart Home Assistant completely.
+5. Check **Settings → System → Logs** for integration startup, migration, Recorder, or entity-registry errors.
+6. Reload the dashboard/browser to refresh the JavaScript card.
 
-## Daten und Rückfall
+## Entity registry migration
 
-Die Integrationskonfiguration wird über den Config Entry verwaltet. Fachliche Buchungsdaten liegen im lokalen Integrationsdatenspeicher. Vor Updates mit Datenmodell- oder Migrationsänderungen ist eine Home-Assistant-Sicherung erforderlich. Ein Downgrade darf nicht als sicher gelten, wenn ein neuerer Datenbankschemastand geschrieben wurde; vor einem Rückfall ist die Sicherung des vorherigen Stands wiederherzustellen.
+On config-entry setup, the integration computes canonical entity IDs from the configured logical meter names. Only registry entries belonging to the current integration config entry are considered. Balance unique IDs use the role suffixes `verbrauch_kontostand` and `einspeisung_kontostand`. Review the resulting entity IDs and Recorder history after the first startup. Keep the pre-update backup until this check is complete.
+
+## Monthly advance changes
+
+After saving monthly advance overrides, the options flow reloads the config entry. The sensor platform rebuilds its entities from the updated ledger. Confirm the balance state and attributes after the reload. A changed month must not modify another month or the recurring contract advance.
+
+## Rollback
+
+If startup or migration fails, stop Home Assistant, restore the previous integration directory and restore the pre-update Home Assistant backup if data or registry state changed. Do not attempt to repair a partially migrated entity registry by deleting entities manually without a backup.

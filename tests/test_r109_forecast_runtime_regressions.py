@@ -27,7 +27,7 @@ def test_forecast_sensor_refreshes_after_startup_and_on_source_change():
     source = SENSOR.read_text(encoding="utf-8")
     assert "await self._async_refresh_history()" in source
     assert "self.async_write_ha_state()" in source
-    assert "async_track_state_change_event(self.hass, [self._source], self._changed)" in source
+    assert "async_track_state_change_event(hass, tracked_entities, self._changed)" in source
 
 
 def test_forecast_runtime_rounding_constant_is_imported_at_module_scope():

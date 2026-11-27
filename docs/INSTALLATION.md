@@ -1,55 +1,59 @@
-# Installation und Bedienung – VerbrauchsMonitor 0.0.2 – Dev R114
+# Installation and Update Guide — VerbrauchsMonitor 0.0.1
 
-## Voraussetzungen
+## Requirements
 
-- Home Assistant Core 2026.11.1 oder neuer als Projektziel; die konkrete Installation muss im Zielsystem getestet werden.
-- Sensorentitäten für die zu verwendenden Zählerstände. Leistungs- und Außenhelligkeitsentitäten sind optional.
-- Für saisonale Prognosen geeignete Recorder-Langzeitstatistiken oder ausreichend vorhandene Detailhistorie.
+- Home Assistant Core 2026.11.1 or later.
+- At least one valid Home Assistant source sensor for a cumulative meter reading.
+- Recorder history or long-term statistics for historical forecast evaluation.
 
-## Manuelle Installation
+## Installation through HACS
 
-1. Home-Assistant-Backup erstellen.
-2. Den vollständigen Ordner `custom_components/verbrauchsmonitor/` nach `/config/custom_components/verbrauchsmonitor/` kopieren. Einen vorhandenen Ordner vollständig ersetzen.
-3. Home Assistant vollständig neu starten.
-4. Unter **Einstellungen → Geräte & Dienste → Integration hinzufügen** die Integration **VerbrauchsMonitor** auswählen.
-5. Die Ersteinrichtung im Config Flow abschließen.
-6. Weitere Verträge, Zähler, Abrechnungen, Buchungen und Prognosen über **Konfigurieren** im Options Flow verwalten.
+1. Open HACS and select **Integrations**.
+2. Open **Custom repositories** from the menu.
+3. Add `https://github.com/Muschelschubser26/HA-Integration-VerbrauchsMonitor` as an **Integration** repository.
+4. Find **VerbrauchsMonitor** and install it.
+5. Restart Home Assistant completely.
+6. Add the integration under **Settings → Devices & services → Add integration** and complete the configuration.
 
-## Lovelace-Karte
+## Manual installation
 
-Im Storage-Modus registriert die Integration die Kartenressource automatisch. Danach Dashboard/Browser neu laden und im Kartenpicker nach **VerbrauchsMonitor** suchen. Im YAML-Ressourcenmodus folgende Ressource vom Typ `module` eintragen:
+1. Create a full Home Assistant backup.
+2. Copy the complete `custom_components/verbrauchsmonitor/` directory from the archive to `/config/custom_components/verbrauchsmonitor/`. Replace the old directory completely; do not merge files.
+3. Restart Home Assistant completely.
+4. Add or configure VerbrauchsMonitor under **Settings → Devices & services**.
+5. Refresh the dashboard/browser after startup.
 
-`/verbrauchsmonitor/verbrauchsmonitor-card.js`
+## Lovelace resource
 
-Pro logischem Zähler und Abrechnungsrichtung (Verbrauch oder Einspeisung) wird eine eigene Karteninstanz angelegt.
+In storage mode, the integration registers its card resource automatically. Registration is idempotent and retries while Lovelace storage initializes. After an upgrade, the resource URL is updated with the current integration version.
 
-## Konfigurierbare Daten
+In YAML resource mode, add `/verbrauchsmonitor/verbrauchsmonitor-card.js` as a JavaScript module. Use one billing-card instance per logical meter and accounting direction.
 
-- Verträge mit Vertragsdaten, Beginn/Ende und Abrechnungszeitraum.
-- Netto-/Brutto-Tarife, Mehrwertsteuersatz einschließlich 0 %, Grundpreis und monatliche Abschläge.
-- Logische Zähler mit optionaler Zählernummer und optionalen Quellentitäten für Verbrauch, Einspeisung und Leistung.
-- Anfangszählerstände mit Herkunft und Datum sowie Routineübernahme an Periodengrenzen.
-- Sonderzahlungen, Gutschriften und Korrekturbuchungen je Zähler und Abrechnungsrichtung.
-- Monatsabschläge und getrennt aktivierbare Verbrauchs-/Einspeiseprognosen.
+## Monthly advance editing
 
-## Automatische Monatsabschläge
+Select the meter and accounting direction before opening the month list. The current month is excluded. The list starts with the next eligible month and contains at most seven eligible months. The selection can cross a calendar-year boundary.
 
-Jeder Monatserste innerhalb des Abrechnungszeitraums gilt automatisch als Zahlung des vereinbarten Monatsabschlags. Es ist keine manuelle Zahlungsbestätigung erforderlich. Eine explizite, zugeordnete Abschlagsbuchung ersetzt den automatischen Betrag desselben Monats. Verbrauch und Einspeisung werden getrennt geführt. Zukünftige Monatserste zählen nicht zum aktuellen Kontostand, sondern nur als erwartete Zahlung in der Prognose.
+Each month is independently editable. Negative values are rejected; zero is allowed. Saving unchanged values creates no new history versions. Changing a month does not automatically alter the recurring contract advance or other months. The saved amount applies through the end of the billing period that contains the selected month. After a successful save, the integration reloads its entities so balances are recalculated from the updated ledger.
 
-## Prognose
+## Forecast and reliability display
 
-Die Prognose wird je Quellzähler und Abrechnungsrichtung verwaltet. Langzeitstatistiken werden bevorzugt; vorhandene Detailhistorie kann als Fallback dienen. Unter 12 Monaten belastbarer Historie wird linear prognostiziert. Ab ausreichender Historienlänge kann ein saisonales Monatsprofil verwendet werden; für längere Vergleiche werden Daten aus zwei Kalenderjahren und Mindestabdeckung vorausgesetzt. Bei unzureichender Datenqualität bleibt die lineare Methode aktiv. Die Jahreszeit wird astronomisch aus den Home-Assistant-Koordinaten ermittelt.
+Consumption and feed-in forecast paths are evaluated separately for each logical meter and direction. Forecast inputs include available historical energy data and the configured seasonal/time-of-day/solar context.
 
-Die Prognose erzeugt keine Zahlungsbuchungen und verändert keinen aktuellen Kontostand.
+The reliability percentage is shown only when the required evidence is available. The current implementation evaluates usable Recorder history using its duration, coverage, continuity, plausibility and forecast method. A usable basis requires at least 12 months of history, at least two samples and at least 50% coverage. The score has no artificial minimum. If the evidence is insufficient, no percentage is fabricated.
 
-## Update- und Neustartverhalten
+Historical forecast-to-actual learning and financial forecast calibration remain subject to the limitations documented in `ZUVERLAESSIGKEIT.md` and `OFFENE_PUNKTE.md`. Recorder availability and quality therefore affect the result.
 
-- Vollständiger Austausch des Integrationsordners und danach vollständiger Home-Assistant-Neustart für Python-/Manifeständerungen.
-- Dashboard-/Browser-Reload für reine JavaScript-/CSS-Änderungen.
-- Änderungen über den Options Flow lösen den vorgesehenen Config-Entry-Reload aus.
+## Database operations
 
-Vor Updates mit Datenbank- oder Migrationsänderungen ein Home-Assistant-Backup erstellen.
+The database status combines config-entry contract/meter counts with SQLite ledger counts. Before import, reset, or destructive data management, create a Home Assistant backup. Reset operations require explicit confirmation.
 
-## Grenzen
+## Update and restart behavior
 
-Ein erfolgreicher automatisierter Testlauf bestätigt nicht den Start-/Reload-/Unload-Betrieb in der konkreten Home-Assistant-Installation. Recorder-Daten, reale Quellentitäten, Migrationen und Dashboard-Darstellung müssen im Zielsystem geprüft werden. Weitere bekannte Grenzen stehen in `OFFENE_PUNKTE.md`.
+- Replace the integration directory completely.
+- Restart Home Assistant after Python, manifest, translation or service-definition changes.
+- Refresh the dashboard/browser after frontend-only changes.
+- Options-flow changes trigger the integration config-entry reload.
+
+## Test boundary
+
+Automated tests do not replace a live Home Assistant runtime test. Verify startup, reload/unload, Recorder data, entity-registry migrations, config-flow controls, dashboard layout, and real sensor values in the target installation. The release archive documents outstanding runtime checks in `OFFENE_PUNKTE.md`.

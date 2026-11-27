@@ -33,7 +33,8 @@ def test_forecast_sensor_initializes_meter_id_before_storage_lifecycle():
 
 def test_reliability_store_key_uses_initialized_meter_id():
     source = SENSOR.read_text()
-    assert 'f"{DOMAIN}_{self._entry_id}_{self._direction}_forecast_reliability"' in source
+    assert 'Legacy synthetic reliability storage is intentionally no longer read.' in source
+    assert 'f"{DOMAIN}_{self._entry_id}_{self._direction}_forecast_reliability"' not in source
     constructor = _forecast_constructor()
     entry_id_line = next(i for i, node in enumerate(constructor.body)
                          if isinstance(node, ast.Assign)
@@ -44,20 +45,22 @@ def test_reliability_store_key_uses_initialized_meter_id():
     assert entry_id_line < data_line
 
 
-def test_randomized_reliability_start_range_is_exactly_376_to_443_tenths():
+def test_reliability_has_no_randomized_start_value():
     source = FORECAST.read_text()
-    assert "(376 + secrets.randbelow(68)) / 10" in source
+    assert "secrets.randbelow" not in source
+    assert '"score": None' in source
 
 
 def test_forecast_box_remains_visible_when_forecast_entities_are_missing():
     card = (ROOT / "custom_components/verbrauchsmonitor/frontend/verbrauchsmonitor-card.js").read_text()
     assert 'const forecastBox = `<section class="forecast-box"' in card
-    assert 'forecast sensors are missing or unavailable' in card.lower()
+    assert 'forecast sensors are missing or unavailable' not in card.lower()
+    assert 'Abschlagsprognose derzeit nicht verfügbar' not in card
 
 
 def test_cost_summary_shows_monthly_average_and_current_billing_period():
     card = (ROOT / "custom_components/verbrauchsmonitor/frontend/verbrauchsmonitor-card.js").read_text()
-    assert 't("Ø Aktuell im Monat","Average current month")' in card
+    assert 't("Ø im Monat","Average per month")' in card
     assert 't("Aktueller Abrechnungszeitraum","Current billing period")' in card
     assert 'totalCosts / elapsedDays * 30.436875' in card
     assert 'noch nicht berechenbar' in card
@@ -65,7 +68,8 @@ def test_cost_summary_shows_monthly_average_and_current_billing_period():
 
 def test_monthly_advances_reduce_account_balance_automatically_on_day_one():
     source = SENSOR.read_text()
-    assert 'advances = money_amount(expected_advances)' in source
+    assert 'advances = money_amount(expected_advance_amount)' in source
+    assert 'expected_advances_total' in source
     assert 'No confirmation or manual booking is required' in source
 
 

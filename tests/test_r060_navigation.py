@@ -7,12 +7,12 @@ STRINGS = ROOT / "custom_components/verbrauchsmonitor/strings.json"
 
 def test_main_menu_keeps_existing_grouped_navigation():
     source = FLOW.read_text()
-    expected = 'menu_options=["contracts", "meters", "forecast", "billing", "data_management", "about"]'
+    expected = 'menu_options=["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"]'
     assert expected in source
 
 def test_database_is_reached_through_data_management():
     source = FLOW.read_text()
-    assert 'if selected == ["database"]:' in source
+    assert 'menu_options=["reset_data", "recorder_entities", "database"]' in source
     assert 'return await self.async_step_database()' in source
 
 def test_database_menu_has_explicit_actions():
@@ -26,4 +26,4 @@ def test_navigation_uses_native_home_assistant_flow():
     source = FLOW.read_text()
     assert "class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow)" in source
     assert "async_show_menu" in source
-    assert 'description_placeholders={"revision": "R111"}' in source
+    assert 'description_placeholders={"revision": RELEASE_REVISION, "version": RELEASE_VERSION, "stage": RELEASE_STAGE}' in source

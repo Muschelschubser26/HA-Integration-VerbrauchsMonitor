@@ -10,17 +10,17 @@ def test_forecast_reset_scope_is_present_and_localized():
     assert 'meter["forecast_consumption_enabled"] = False' in flow
     de = json.loads((ROOT / "custom_components/verbrauchsmonitor/translations/de.json").read_text())
     en = json.loads((ROOT / "custom_components/verbrauchsmonitor/translations/en.json").read_text())
-    assert de["options"]["step"]["data_management"]["data"]["forecasts"] == "Prognose zurücksetzen"
-    assert en["options"]["step"]["data_management"]["data"]["forecasts"] == "Reset forecasts"
+    assert de["options"]["step"]["reset_data"]["data"]["forecasts"] == "Prognose zurücksetzen"
+    assert en["options"]["step"]["reset_data"]["data"]["forecasts"] == "Reset forecasts"
 
 
 def test_forecast_card_order_and_start_month():
     card = (ROOT / "custom_components/verbrauchsmonitor/frontend/verbrauchsmonitor-card.js").read_text()
-    assert 'class="forecast-trend ${advanceTrend}"' in card
-    assert 'Möglicher Monatsabschlag:' in card
+    assert 'Voraussichtlicher monatlicher Abschlag:' in card
     assert 'forecast-start-month' in card
-    assert 'forecastReliability >= 80' in card
-    assert 'forecastReliability >= 50' in card
+    assert 'forecastReliability.toLocaleString(locale' in card
+    assert 'reliabilityIcon' not in card
+    assert 'forecastReliability >= 80' not in card
 
 
 def test_season_is_automatically_calculated_from_home_assistant_location():

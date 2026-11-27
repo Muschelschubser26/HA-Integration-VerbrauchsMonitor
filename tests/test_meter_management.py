@@ -22,7 +22,7 @@ def test_meter_fields_are_translated_in_both_languages():
 
 def test_manifest_revision():
     data = json.loads((INTEGRATION / "manifest.json").read_text())
-    assert data["version"] == "0.0.2"
+    assert data["version"] == "0.0.1"
 
 def test_meter_contract_is_required_and_selected_from_saved_contracts():
     source = (INTEGRATION / "config_flow.py").read_text()

@@ -1,49 +1,26 @@
-from datetime import datetime, timedelta, timezone
-
-import importlib.util
+from datetime import datetime, timezone
+from importlib.util import module_from_spec, spec_from_file_location
 from pathlib import Path
+import sys
 
-_spec = importlib.util.spec_from_file_location(
-    "vm_forecast_r086",
-    Path(__file__).parents[1] / "custom_components" / "verbrauchsmonitor" / "forecast.py",
-)
-_forecast = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(_forecast)
-initial_reliability_state = _forecast.initial_reliability_state
-update_reliability_state = _forecast.update_reliability_state
+PATH = Path(__file__).parents[1] / "custom_components" / "verbrauchsmonitor" / "forecast.py"
+spec = spec_from_file_location("vm_r086_revised", PATH)
+forecast = module_from_spec(spec)
+sys.modules[spec.name] = forecast
+spec.loader.exec_module(forecast)
 
 
-def test_initial_reliability_is_randomized_in_configured_range():
-    now = datetime(2026, 11, 23, tzinfo=timezone.utc)
-    values = [initial_reliability_state(now=now)["score"] for _ in range(200)]
-    assert all(37.6 <= value <= 44.3 for value in values)
-    assert len(set(values)) > 1
+def test_initial_state_contains_no_fabricated_score():
+    state = forecast.initial_reliability_state(now=datetime(2026, 11, 25, tzinfo=timezone.utc))
+    assert state["score"] is None
 
 
-def test_reliability_does_not_change_before_hourly_review():
-    now = datetime(2026, 11, 23, tzinfo=timezone.utc)
-    state = {"score": 41.7, "last_evaluated": now.isoformat()}
-    updated = update_reliability_state(
-        state, history={"history_months": 24, "coverage_percent": 100,
-                        "gap_days_max": 1, "quality": 100},
-        method="seasonal_24m", now=now + timedelta(minutes=59),
+def test_update_recomputes_from_evidence_instead_of_smoothing_legacy_score():
+    now = datetime(2026, 11, 25, tzinfo=timezone.utc)
+    history = {"usable": True, "history_months": 24, "sample_count": 200,
+               "coverage_percent": 100, "gap_days_max": 1, "quality": 100}
+    state = forecast.update_reliability_state(
+        {"score": 41.7, "last_evaluated": now.isoformat()},
+        history=history, method="seasonal_24m", now=now,
     )
-    assert updated == state
-
-
-def test_reliability_moves_toward_evidence_based_target_with_40_percent_floor():
-    now = datetime(2026, 11, 23, tzinfo=timezone.utc)
-    state = {"score": 41.7, "last_evaluated": now.isoformat()}
-    high = update_reliability_state(
-        state, history={"history_months": 24, "coverage_percent": 100,
-                        "gap_days_max": 1, "quality": 100},
-        method="seasonal_24m", now=now + timedelta(days=7),
-    )
-    low = update_reliability_state(
-        state, history={"history_months": 0, "coverage_percent": 0,
-                        "gap_days_max": 999, "quality": 0},
-        method="linear_elapsed_period_average", now=now + timedelta(days=7),
-    )
-    assert high["score"] > state["score"]
-    assert low["score"] < state["score"]
-    assert low["score"] >= 40.0
+    assert state["score"] == forecast.reliability_score(history=history, method="seasonal_24m")["forecast_reliability_percent"]

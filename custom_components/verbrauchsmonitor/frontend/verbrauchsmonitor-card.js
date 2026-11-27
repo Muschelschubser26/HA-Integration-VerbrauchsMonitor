@@ -1,4 +1,4 @@
-/* VerbrauchsMonitor dashboard card – v0.0.2 R114 */
+/* VerbrauchsMonitor dashboard card – v0.0.1 Prod R0171 */
 class VerbrauchsMonitorCard extends HTMLElement {
   setConfig(config) {
     this.config = config || {};
@@ -197,6 +197,7 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
     const valid = s => s && !["unknown", "unavailable", "none", ""].includes(String(s.state).toLowerCase()) && Number.isFinite(Number(s.state));
     const num = (v, digits=2) => Number.isFinite(Number(v)) ? new Intl.NumberFormat(locale,{minimumFractionDigits:digits,maximumFractionDigits:digits}).format(Number(v)) : "–";
     const money = v => `${num(v,2)} €`;
+    const moneyCompact = v => { const n = Number(v); return Number.isFinite(n) && Math.abs(n - Math.round(n)) < 0.000001 ? `${num(Math.round(n),0)} €` : money(v); };
     // Tariffs are displayed with two decimal places only. The unrounded
     // backend tariff remains untouched and is still used for all calculations.
     const tariff = v => Number.isFinite(Number(v)) ? new Intl.NumberFormat(locale,{minimumFractionDigits:2,maximumFractionDigits:2,useGrouping:false}).format(Number(v)) : "–";
@@ -208,7 +209,7 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
       return new Intl.NumberFormat("de-DE",{minimumFractionDigits:trim?0:digits,maximumFractionDigits:digits,useGrouping:false}).format(normalized);
     };
     const withColon = label => /:$/.test(String(label).trim()) ? String(label) : `${label}:`;
-    const field = (label, value, unit="", emphasis=false) => `<div class="row${emphasis?" emphasis":""}"><span>${esc(withColon(label))}</span><strong>${esc(value)}${unit?` ${esc(unit)}`:""}</strong></div>`;
+    const field = (label, value, unit="", emphasis=false, className="") => `<div class="row${emphasis?" emphasis":""}${className?` ${className}`:""}"><span>${esc(withColon(label))}</span><strong>${esc(value)}${unit?` ${esc(unit)}`:""}</strong></div>`;
 
     const selectedId = this.config.meter_id || (groups.size === 1 ? [...groups.keys()][0] : "");
     const selectedDirection = this.config.direction === "feed_in" ? "feed_in" : "consumption";
@@ -222,6 +223,8 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
     }
 
     const get = role => group.find(s => s.attributes.vm_role === role);
+    const consumptionPower = get("consumption_power");
+    const feedPower = get("feed_in_power");
     const counter = get("consumption_counter"), feed = get("feed_in_counter");
     const balance = get("consumption_balance"), feedBalance = get("feed_in_balance");
     const meterMeta = counter || feed || balance || feedBalance || group[0];
@@ -258,13 +261,15 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
     const costC = deltaC !== null && deltaC >= 0 ? deltaC*priceC/100 : null;
     const costF = deltaF !== null && deltaF >= 0 ? deltaF*priceF/100 : null;
     const base = gross(a.base_price_net);
-    let elapsedMonths = 0;
+    let proratedBase = 0;
     if (periodStart && /^\d{4}-\d{2}-\d{2}$/.test(periodStart)) {
       const startDate = new Date(`${periodStart}T00:00:00`), now = new Date();
-      if (startDate <= now) elapsedMonths = Math.max(0,(now.getFullYear()-startDate.getFullYear())*12+now.getMonth()-startDate.getMonth()+1);
+      if (startDate <= now) {
+        const yearDays = new Date(now.getFullYear(), 1, 29).getMonth() === 1 ? 366 : 365;
+        const elapsedSeconds = Math.max(0, (now.getTime() - startDate.getTime()) / 1000);
+        proratedBase = Math.min(base, base * elapsedSeconds / (yearDays * 86400));
+      }
     }
-    if (a.billing_period_months) elapsedMonths = Math.min(elapsedMonths,Number(a.billing_period_months));
-    const proratedBase = base*elapsedMonths/12;
     const financeFor = (sourceState, direction, balanceState) => {
       const sourceAttributes = { ...(balanceState?.attributes || {}), ...(sourceState?.attributes || {}) };
       const sourcePeriodStart = String(
@@ -303,36 +308,13 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
       const recordedAdvances = validBookings.filter(b => b.booking_type === "advance");
       const recordedAdvanceTotal = recordedAdvances.reduce((sum, b) => sum + Number(b.amount || 0), 0);
 
-      let automaticMonths = 0;
-      // Both consumption and feed-in advances are paid automatically on
-      // the first of each month; their amounts remain direction-specific.
-      if (sourcePeriodStart && /^\d{4}-\d{2}-\d{2}$/.test(sourcePeriodStart)) {
-        const start = new Date(`${sourcePeriodStart}T00:00:00`);
-        const configuredEnd = sourcePeriodEnd
-          ? new Date(`${String(sourcePeriodEnd).slice(0, 10)}T00:00:00`)
-          : new Date(start.getFullYear(), start.getMonth() + sourcePeriodMonths, 0);
-        const today = new Date();
-        const end = today < configuredEnd ? today : configuredEnd;
-        if (start <= end) {
-          let due = new Date(start.getFullYear(), start.getMonth(), 1);
-          if (due < start) due = new Date(due.getFullYear(), due.getMonth() + 1, 1);
-          while (due <= end) {
-            const monthKey = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, "0")}`;
-            if (!recordedAdvances.some(b => String(b.date || "").slice(0, 7) === monthKey)) {
-              automaticMonths += 1;
-            }
-            due = new Date(due.getFullYear(), due.getMonth() + 1, 1);
-          }
-        }
-      }
-      const monthlyGross = Number(sourceAttributes.monthly_advance_gross ?? 0);
-      const calculatedAdvancePaid = recordedAdvanceTotal + automaticMonths * monthlyGross;
-      // Project rule: each first day of a month in the billing period
-      // automatically counts as a paid monthly advance. Explicit advance
-      // bookings replace the automatic amount for their month.
-      const advancePaid = Number.isFinite(Number(sourceAttributes.recorded_advances_paid))
-        ? Number(sourceAttributes.recorded_advances_paid)
-        : calculatedAdvancePaid;
+      // Project rule: each elapsed month is counted as a paid monthly advance.
+      // The backend supplies the authoritative effective-month groups.
+      const monthlyAdvanceGroups = Array.isArray(sourceAttributes.monthly_advance_groups)
+        ? sourceAttributes.monthly_advance_groups
+        : [];
+      const groupedAdvanceTotal = monthlyAdvanceGroups.reduce((sum, group) => sum + Number(group.total || 0), 0);
+      const advancePaid = monthlyAdvanceGroups.length ? groupedAdvanceTotal : recordedAdvanceTotal;
       return {
         extraCharges,
         credits,
@@ -341,6 +323,7 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
         additionalPaymentCount: additionalPaymentBookings.length,
         correctionCount: correctionBookings.length,
         advancePaid,
+        monthlyAdvanceGroups,
       };
     };
     const financeC=financeFor(counter, "consumption", balance), financeF=financeFor(feed, "feed_in", feedBalance);
@@ -370,30 +353,54 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
       const forecastBalance = get(`${isFeed ? "feed_in" : "consumption"}_forecast_annual_balance`);
       const forecastAdvance = get(`${isFeed ? "feed_in" : "consumption"}_forecast_monthly_advance`);
       const forecastAvailable = valid(forecastBalance) || valid(forecastAdvance);
-      const forecastReliability = Number(forecastBalance?.attributes?.forecast_reliability_percent ?? forecastAdvance?.attributes?.forecast_reliability_percent);
+      const reliabilityRaw = forecastBalance?.attributes?.forecast_reliability_percent ?? forecastAdvance?.attributes?.forecast_reliability_percent;
+      const forecastReliability = reliabilityRaw === null || reliabilityRaw === undefined || reliabilityRaw === "" ? NaN : Number(reliabilityRaw);
       const seasonValue = forecastBalance?.attributes?.forecast_current_season ?? forecastAdvance?.attributes?.forecast_current_season;
       const seasonNames = {spring:t("Frühling","Spring"),summer:t("Sommer","Summer"),autumn:t("Herbst","Autumn"),winter:t("Winter","Winter")};
       const seasonLabel = seasonNames[String(seasonValue || "").toLowerCase()] || null;
-      const hasForecastReliability = Number.isFinite(forecastReliability);
-      const reliabilityIcon = forecastReliability >= 80 ? "🟢" : forecastReliability >= 50 ? "🟡" : "🔴";
+      const hasForecastReliability = Number.isFinite(forecastReliability) && (forecastBalance?.attributes?.forecast_reliability_available === true || forecastAdvance?.attributes?.forecast_reliability_available === true);
+      const reliabilityIsInitial = forecastBalance?.attributes?.forecast_reliability_is_initial === true || forecastAdvance?.attributes?.forecast_reliability_is_initial === true;
+      const reliabilityPending = forecastBalance?.attributes?.forecast_reliability_pending === true || forecastAdvance?.attributes?.forecast_reliability_pending === true;
+      const reliabilityProgress = Number(forecastBalance?.attributes?.forecast_reliability_progress_percent ?? forecastAdvance?.attributes?.forecast_reliability_progress_percent ?? 0);
+      const forecastEnabled = isFeed ? a.forecast_feed_in_enabled === true : a.forecast_consumption_enabled !== false;
+      const showForecastReliability = forecastEnabled || hasForecastReliability || reliabilityPending;
       const forecastEndLabel = periodEndDate
         ? new Intl.DateTimeFormat(locale, { day: "2-digit", month: "2-digit", year: "numeric" }).format(periodEndDate)
         : "";
-      const currentMonthlyAdvance = Number(sourceState?.attributes?.monthly_advance_gross ?? 0);
       const recommendedMonthlyAdvance = valid(forecastAdvance) ? Number(forecastAdvance.state) : null;
-      let advanceTrend = "steady", advanceTrendIcon = "↔", advanceTrendText = t("Der Abschlag muss nicht geändert werden", "The advance does not need to be changed");
-      if (recommendedMonthlyAdvance !== null && currentMonthlyAdvance > 0) {
-        const difference = recommendedMonthlyAdvance - currentMonthlyAdvance;
-        if (difference > 0.5) { advanceTrend = "increase"; advanceTrendIcon = "↑"; advanceTrendText = t("Der Abschlag sollte erhöht werden", "The advance should be increased"); }
-        else if (difference < -0.5) { advanceTrend = "decrease"; advanceTrendIcon = "↓"; advanceTrendText = t("Der Abschlag könnte verringert werden", "The advance could be reduced"); }
+      const recommendationAttributes = forecastAdvance?.attributes || forecastBalance?.attributes || {};
+      const recommendationReason = forecastAdvance?.attributes?.forecast_recommendation_unavailable_reason ?? forecastBalance?.attributes?.forecast_recommendation_unavailable_reason;
+      const recommendationAvailable = valid(forecastAdvance) && Number.isFinite(Number(forecastAdvance.state)) && recommendationAttributes.forecast_recommendation_available !== false;
+      let recommendationUnavailableText = "";
+      if (forecastEnabled && !recommendationAvailable) {
+        if (recommendationReason === "final_payment_period") {
+          recommendationUnavailableText = t(
+            "Für den verbleibenden Abrechnungszeitraum wird kein möglicher neuer Abschlag mehr berechnet. Der finanzielle Ausgleich erfolgt über die Jahresabrechnung.",
+            "No possible new monthly advance is calculated for the remaining billing period. The financial balance will be settled through the annual bill."
+          );
+        } else if (recommendationReason === "no_remaining_payment_gap") {
+          recommendationUnavailableText = t(
+            "Für den verbleibenden Abrechnungszeitraum ist kein zusätzlicher monatlicher Abschlag erforderlich. Die erwarteten Zahlungen decken den prognostizierten Bedarf.",
+            "No additional monthly advance is required for the remaining billing period. Expected payments cover the forecast amount."
+          );
+        } else if (recommendationReason === "insufficient_reliability") {
+          recommendationUnavailableText = t(
+            "Ein voraussichtlicher monatlicher Abschlag kann noch nicht zuverlässig berechnet werden, da die Messhistorie noch nicht ausreicht.",
+            "A likely monthly advance cannot yet be calculated reliably because the measurement history is insufficient."
+          );
+        } else {
+          recommendationUnavailableText = t(
+            "Ein voraussichtlicher monatlicher Abschlag wird gerade berechnet.",
+            "A likely monthly advance cannot currently be calculated reliably."
+          );
+        }
       }
-      const forecastEnabled = isFeed ? a.forecast_feed_in_enabled === true : a.forecast_consumption_enabled !== false;
       const forecastBox = `<section class="forecast-box" aria-label="${esc(t("Prognose", "Forecast"))}">
-        <div class="forecast-heading">${esc(t("Prognose zum Abrechnungsende am", "Forecast at the end of the billing period on"))}${forecastEndLabel ? ` <span>${esc(forecastEndLabel)}</span>` : ""}</div>
         ${seasonLabel ? `<div class="forecast-season">${esc(t("Jahreszeit:","Season:"))} ${esc(seasonLabel)}</div>` : ""}
-        ${hasForecastReliability ? `<div class="forecast-reliability">${esc(t("Zuverlässigkeit:", "Reliability:"))} ${forecastReliability.toFixed(1)}% ${reliabilityIcon}</div>` : ""}
+        <div class="forecast-heading">${esc(t("Prognose zum Abrechnungsende am", "Forecast at the end of the billing period on"))}${forecastEndLabel ? ` <span>${esc(forecastEndLabel)}</span>` : ""}</div>
+        ${showForecastReliability ? `<div class="forecast-reliability">${esc(t("Zuverlässigkeit:", "Reliability:"))} ${hasForecastReliability ? `${forecastReliability.toLocaleString(locale, {minimumFractionDigits:0, maximumFractionDigits:1})} %` : reliabilityPending ? `<span>${esc(t("wird ermittelt", "being determined"))} (${Math.max(0, Math.min(100, Math.round(reliabilityProgress)))} %)<span class="reliability-spinner" role="status" aria-label="${esc(t("Ermittlung läuft", "Calculation in progress"))}"></span></span>` : `<span>${esc(t("keine Bewertungsgrundlage", "no assessment basis"))}</span>`}${reliabilityIsInitial ? ` <small>${esc(t("(vorläufiger Startwert)", "(provisional starting value)"))}</small>` : ""}</div>` : ""}
         ${valid(forecastBalance) ? `<div class="forecast-balance"><span>${esc(t("Erwarteter Abrechnungssaldo:", "Expected billing balance:"))}</span><strong class="${Number(forecastBalance.state) < 0 ? "negative" : "positive"}">${esc(`${Number(forecastBalance.state) > 0 ? "+" : Number(forecastBalance.state) < 0 ? "−" : ""}${money(Math.abs(Number(forecastBalance.state)))}`)}</strong></div>` : ""}
-        ${valid(forecastAdvance) ? `<div class="forecast-advance ${advanceTrend}"><div class="forecast-trend ${advanceTrend}"><span>${esc(advanceTrendText)}</span><b aria-hidden="true">${advanceTrendIcon}</b></div><span>${esc(t("Möglicher Monatsabschlag:", "Possible monthly advance:"))}</span><div class="forecast-advance-line"><strong>${esc(money(recommendedMonthlyAdvance))}</strong><span class="forecast-monthly-unit">${esc(t("pro Monat", "per month"))}</span><span class="forecast-start-month">→ ${esc(t("ab", "from"))} ${esc(new Intl.DateTimeFormat(locale, {month:"long"}).format(new Date(new Date().getFullYear(), new Date().getMonth()+1, 1)))}</span></div>${forecastAdvance.attributes?.advance_recommendation_limit_applied ? `<small class="forecast-limit-note">${esc(t("Die Empfehlung ist wegen der begrenzten Datenbasis vorsichtig angepasst.", "The recommendation is conservatively adjusted due to limited data."))}</small>` : ""}</div>` : `<div class="forecast-unavailable">${esc(forecastAvailable ? t("Abschlagsprognose derzeit nicht verfügbar", "Monthly advance forecast currently unavailable") : t("Prognosesensoren fehlen oder sind nicht verfügbar. Bitte Prognosekonfiguration und Integrationsprotokoll prüfen.", "Forecast sensors are missing or unavailable. Check forecast configuration and integration logs."))}</div>`}
+        ${recommendationAvailable ? `<div class="forecast-advance"><span>${esc(t("Voraussichtlicher monatlicher Abschlag:", "Likely monthly advance:"))}</span><div class="forecast-advance-line"><strong>${esc(money(recommendedMonthlyAdvance))}</strong><span class="forecast-monthly-unit">${esc(t("pro Monat", "per month"))}</span><span class="forecast-start-month">→ ${esc(t("ab", "from"))} ${esc(new Intl.DateTimeFormat(locale, {month:"long"}).format(new Date(new Date().getFullYear(), new Date().getMonth()+1, 1)))}</span></div>${forecastAdvance.attributes?.advance_recommendation_limit_applied ? `<small class="forecast-limit-note">${esc(t("Die Empfehlung ist wegen der begrenzten Datenbasis vorsichtig angepasst.", "The recommendation is conservatively adjusted due to limited data."))}</small>` : ""}${forecastAdvance.attributes?.forecast_recommendation_is_initial ? `<small class="forecast-limit-note">${esc(t("Vorläufige Berechnung auf Basis des Startmodells.", "Provisional calculation based on the initial model."))}</small>` : ""}</div>` : recommendationUnavailableText ? `<div class="forecast-unavailable">${esc(recommendationUnavailableText)}</div>` : ""}
       </section>`;
       const meterChangeRows = meterChanges.filter(change => isFeed ? change.feed_in_reading !== undefined : change.consumption_reading !== undefined).map(change => {
         const label = `${isFeed?t("Einspeisung bis zum Zählerwechsel","Feed-in until meter replacement"):t("Verbrauch bis zum Zählerwechsel","Consumption until meter replacement")} – ${new Intl.DateTimeFormat(locale).format(new Date(change.date + "T00:00:00"))}`;
@@ -402,52 +409,77 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
       return `<section class="side"><h3>${esc(directionTitle)}</h3>
         ${meterChangeRows}
         <div class="row baseline-row"><span class="baseline-label">${esc(withColon(t("Zählerstand Abrechnungsbeginn","Meter reading at billing start")))}<span class="baseline-meta-inline">${baselineMeta(isFeed ? "feed_in" : "consumption")}</span></span><strong>${esc(num(baseline,3))} kWh</strong></div>
-        ${field(t("Aktueller Zählerstand","Current meter reading"),current===null?"–":num(current,3),"kWh")}
-        <div class="row period-row"><span class="period-label">${esc(withColon(t(isFeed?"Einspeisung im Abrechnungszeitraum":"Verbrauch im Abrechnungszeitraum",isFeed?"Feed-in during billing period":"Consumption during billing period")))}${(() => {
-          if (!periodStartDate || !periodEndDate) return "";
-          const now = new Date();
-          const start = new Date(periodStartDate.getFullYear(), periodStartDate.getMonth(), periodStartDate.getDate());
-          const end = new Date(periodEndDate.getFullYear(), periodEndDate.getMonth(), periodEndDate.getDate());
-          const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-          const elapsed = Math.max(0, Math.min(Math.floor((Math.min(today, end)-start)/86400000)+1, Math.floor((end-start)/86400000)+1));
-          let months = (today.getFullYear()-start.getFullYear())*12 + today.getMonth()-start.getMonth();
-          const anchor = new Date(start.getFullYear(), start.getMonth()+months, start.getDate());
-          if (anchor > today) months--;
-          months = Math.max(0, months);
-          const monthAnchor = new Date(start.getFullYear(), start.getMonth()+months, start.getDate());
-          const days = Math.max(0, Math.floor((today-monthAnchor)/86400000));
-          const totalDays = Math.floor((end-start)/86400000)+1;
-          const percent = totalDays > 0 ? Math.min(100, Math.round(elapsed/totalDays*100)) : 0;
-          const duration = `${months} ${months===1?t("Monat","month"):t("Monate","months")} und ${days} ${days===1?t("Tag","day"):t("Tage","days")}`;
-          return `<span class="baseline-meta period-progress">${percent} % · ${esc(duration)}</span>`;
-        })()}</span><strong>${esc(delta===null||delta<0?"–":`${num(delta,3)} kWh`)}</strong></div>
-        ${field(isFeed?t("Einspeisevergütung","Feed-in tariff"):t("Arbeitspreis","Energy price"),tariff(price),"ct/kWh")}
+        <div class="row meter-reading-row"><span>${esc(withColon(t("Zählerstand","Meter reading")))}</span><strong>${current===null?"–":esc(num(current,3))} kWh</strong></div>
+        <div class="row period-row"><span class="period-label">${esc(withColon(t(isFeed?"Einspeisung im Abrechnungszeitraum":"Verbrauch im Abrechnungszeitraum",isFeed?"Feed-in during billing period":"Consumption during billing period")))}</span><strong>${esc(delta===null||delta<0?"–":`${num(delta,3)} kWh`)}</strong></div>
+        <div class="period-meta-row">
+          ${(() => {
+            if (!periodStartDate || !periodEndDate) return "";
+            const now = new Date();
+            const start = new Date(periodStartDate.getFullYear(), periodStartDate.getMonth(), periodStartDate.getDate());
+            const endExclusive = new Date(periodEndDate.getFullYear(), periodEndDate.getMonth(), periodEndDate.getDate() + 1);
+            const elapsedMs = Math.max(0, Math.min(now.getTime(), endExclusive.getTime()) - start.getTime());
+            const totalMs = Math.max(1, endExclusive.getTime() - start.getTime());
+            const percent = Math.min(100, elapsedMs / totalMs * 100);
+            let wholeMonths = 0;
+            let anchor = new Date(start);
+            while (wholeMonths < 240 && new Date(start.getFullYear(), start.getMonth() + wholeMonths + 1, start.getDate()) <= now) {
+              wholeMonths++;
+              anchor = new Date(start.getFullYear(), start.getMonth() + wholeMonths, start.getDate());
+            }
+            const residualDays = Math.max(0, (Math.min(now.getTime(), endExclusive.getTime()) - anchor.getTime()) / 86400000);
+            const fmt = value => Number.isInteger(value) ? String(value) : value.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2});
+            const duration = `${wholeMonths} ${t("Monate","months")} und ${fmt(residualDays)} ${t("Tage","days")}`;
+            return `<span class="baseline-meta period-progress">${percent.toLocaleString(locale, {minimumFractionDigits:2, maximumFractionDigits:2})} % · ${esc(duration)}</span>`;
+          })()}
+          ${(() => {
+            const power = isFeed ? feedPower : consumptionPower;
+            if (!valid(power)) return "";
+            const consumptionValue = valid(consumptionPower) ? Number(consumptionPower.state) : null;
+            const feedInValue = valid(feedPower) ? Math.abs(Number(feedPower.state)) : null;
+            // Color only the displayed Watt value when a positive feed-in value
+            // exists. The comparison uses magnitudes and never changes sensor data.
+            let comparisonClass = "";
+            if (feedInValue !== null && feedInValue > 0 && consumptionValue !== null) {
+              const difference = feedInValue - consumptionValue;
+              comparisonClass = Math.abs(difference) <= 0.01 ? "power-equal" : difference > 0 ? "power-higher" : "power-lower";
+            }
+            return `<span class="current-power"><span>${esc(withColon(t(isFeed?"Aktuelle Einspeisung":"Aktueller Verbrauch",isFeed?"Current feed-in":"Current consumption")))}</span><strong class="${comparisonClass}">${esc(num(isFeed ? feedInValue : consumptionValue, 0))} Watt</strong></span>`;
+          })()}
+        </div>
+        ${field(isFeed?t("Einspeisevergütung","Feed-in tariff"):t("Arbeitspreis","Energy price"),tariff(price),"ct/kWh",false,"tariff-row")}
         <div class="finance-group"><h4>${withColon(isFeed?t("Vergütung","Remuneration"):t("Kosten","Costs"))}</h4>
           ${isFeed ? `<div class="row"><span>${esc(withColon(t("Einspeisevergütung","Feed-in remuneration")))}</span><strong>${amount===null?"–":money(displayedAmount)}</strong></div>` : field(t("Energiekosten","Energy costs"),amount===null?"–":money(displayedAmount))}
-          ${!isFeed?`<div class="row"><span>${esc(withColon(t("Anteiliger angefallener Grundpreis","Prorated base price")))} <span class="informational">(${money(base)})</span></span><strong>${money(displayedBase)}</strong></div>`:""}
+          ${!isFeed?`<div class="row"><span>${esc(withColon(t("Anteiliger Grundpreis","Prorated base price")))} <span class="informational">(${money(base)})</span></span><strong>${money(displayedBase)}</strong></div>`:""}
           ${finance.extraCharges?field(isFeed?t("Zusätzliche Vergütung","Additional remuneration"):t("Zusatzkosten","Extra charges"),money(finance.extraCharges)):""}
           ${!isFeed?(() => {
             // The monthly average is based on the billing-period start, not on
             // when the historical baseline reading was entered or edited.
-            // Use the same period-start value that is displayed in the card
-            // header. Count elapsed local calendar days, including the start
-            // date; the baseline's manual-entry timestamp is intentionally ignored.
+            // Use the configured billing-period start and the exact current
+            // local timestamp. The current day is therefore included only up
+            // to now, not as a complete calendar day. Ignore the timestamp at
+            // which a historical baseline was manually entered.
             const billingStartTimestamp = periodStart;
-            const today = new Date();
+            const now = new Date();
             const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(billingStartTimestamp);
-            const elapsedDays = match ? Math.max(0, Math.floor((
-              Date.UTC(today.getFullYear(), today.getMonth(), today.getDate()) -
-              Date.UTC(Number(match[1]), Number(match[2])-1, Number(match[3]))
-            ) / 86400000) + 1) : 0;
+            const billingStart = match
+              ? new Date(Number(match[1]), Number(match[2])-1, Number(match[3]), 0, 0, 0, 0)
+              : null;
+            const elapsedDays = billingStart && now >= billingStart
+              ? (now.getTime() - billingStart.getTime()) / 86400000
+              : 0;
             // Average all accrued period costs over the elapsed time since
             // billing-period start. The historical baseline entry timestamp
             // is deliberately not part of this calculation.
             const monthlyAverage = elapsedDays > 0 && amount !== null
               ? totalCosts / elapsedDays * 30.436875
               : null;
-            return `<div class="row cost-average"><span>${esc(withColon(t("Ø Aktuell im Monat","Average current month")))}</span><strong>${monthlyAverage === null ? esc(t("noch nicht berechenbar","not yet calculable")) : `ca. ${esc(money(monthlyAverage))}`}</strong></div>${field(t("Aktueller Abrechnungszeitraum","Current billing period"),money(totalCosts),"",true)}`;
+            return `<div class="row cost-average"><span>${esc(withColon(t("Ø im Monat","Average per month")))}</span><strong>${monthlyAverage === null ? esc(t("noch nicht berechenbar","not yet calculable")) : `${esc(money(monthlyAverage))}`}</strong></div>${field(t("Aktueller Abrechnungszeitraum","Current billing period"),money(totalCosts),"",true)}`;
           })():""}
-          ${isFeed?`<div class="row"><span>${esc(withColon(t("Erhaltene Abschläge","Advances received")))} <span class="informational">(${t("mtl.","monthly")} ${money(monthlyAdvance)})</span></span><strong>${money(finance.advancePaid)}</strong></div>
+          ${isFeed?`<h4>${t("Bereits erhalten:","Received:")}</h4>${finance.monthlyAdvanceGroups.map(group => {
+            const monthLabel = (key) => { const [year, month] = String(key).split("-").map(Number); return new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(year, month - 1, 1)); };
+            const label = Number(group.count) === 1 ? `${monthLabel(group.from_month)} (${moneyCompact(group.monthly_amount)})` : `${monthLabel(group.from_month)} – ${monthLabel(group.to_month)} (${Number(group.count)} × ${moneyCompact(group.monthly_amount)})`;
+            return `<div class="row"><span>${esc(label)}</span><strong>${money(group.total)}</strong></div>`;
+          }).join("")}
           ${finance.additionalPayments !== 0 ? field(
             finance.additionalPaymentCount === 1
               ? t("Sonderzahlung","Additional payment")
@@ -458,8 +490,13 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
             finance.correctionCount === 1 ? t("Korrektur","Correction") : t("Korrekturen","Corrections"),
             money(finance.corrections)
           ) : ""}
-          ${field(t("Gesamt geleistete Zahlungen","Total payments received"),money(finance.advancePaid+finance.additionalPayments+finance.corrections),"",true)}`:`<h4>${t("Bereits gezahlt:","Payments received:")}</h4>
-          <div class="row"><span>${esc(withColon(t("Abschläge","Advances")))} <span class="informational">(${t("mtl.","monthly")} ${money(monthlyAdvance)})</span></span><strong>${money(finance.advancePaid)}</strong></div>
+          <div class="row total-row"><span>${esc(withColon(t("Gesamt erhaltene Zahlungen","Total payments received")))}</span><strong>${money(finance.advancePaid+finance.additionalPayments+finance.corrections)}</strong></div>
+`:`<h4>${t("Bereits bezahlt:","Already paid:")}</h4>
+          ${finance.monthlyAdvanceGroups.map(group => {
+            const monthLabel = (key) => { const [year, month] = String(key).split("-").map(Number); return new Intl.DateTimeFormat(locale, { month: "long" }).format(new Date(year, month - 1, 1)); };
+            const label = Number(group.count) === 1 ? `${monthLabel(group.from_month)} (${moneyCompact(group.monthly_amount)})` : `${monthLabel(group.from_month)} – ${monthLabel(group.to_month)} (${Number(group.count)} × ${moneyCompact(group.monthly_amount)})`;
+            return `<div class="row"><span>${esc(label)}</span><strong>${money(group.total)}</strong></div>`;
+          }).join("")}
           ${finance.additionalPayments !== 0 ? field(
             finance.additionalPaymentCount === 1
               ? t("Summe der Sonderzahlung","Total additional payment")
@@ -472,7 +509,8 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
             finance.correctionCount === 1 ? t("Korrektur","Correction") : t("Korrekturen","Corrections"),
             money(finance.corrections)
           ) : ""}
-          ${field(t("Gesamt geleistete Zahlungen","Total payments received"),money(finance.advancePaid+finance.additionalPayments+finance.corrections),"",true)}` }
+          <div class="row total-row"><span>${esc(withColon(t("Gesamt geleistete Zahlungen","Total payments received")))}</span><strong>${money(finance.advancePaid+finance.additionalPayments+finance.corrections)}</strong></div>
+` }
           ${finance.credits?field(t("Gutschriften","Credits"),money(finance.credits)):""}
           <div class="grand-balance ${balanceClass}">${field(balanceLabel,balanceText,"",true)}</div>
           ${forecastEnabled ? forecastBox : ""}
@@ -520,12 +558,19 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
         .billing-direction{display:block;width:100%;min-width:0}
         .side{box-sizing:border-box;width:100%;min-width:0;padding:0}.side h3{font-size:1rem;margin:0 0 10px;color:var(--primary-color)}
         .row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid var(--divider-color)}
-        .period-row{align-items:center;padding:4px 0;border-bottom:1px solid var(--divider-color)}.period-label{display:inline-flex;flex-direction:column;align-items:flex-start;gap:0;line-height:18px}.period-progress{display:block;margin:0;font-size:9px;line-height:10px}
-        /* The final meter-reading row has no thin bottom rule; the thicker section divider follows after spacing. */
-        .side > .row:nth-child(5){border-bottom:0}
+        .period-row{align-items:center;padding:4px 0 0;border-bottom:0}.period-label{display:inline-flex;flex-direction:column;align-items:flex-start;gap:0;line-height:18px}.period-meta-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:12px;padding:0 0 5px;border-bottom:1px solid var(--divider-color)}.period-progress{display:block;margin:0;font-size:10px;line-height:12px;color:var(--secondary-text-color)}
+        /* Separate the current meter reading from the billing-period section. */
+        .meter-reading-row{border-bottom:1px solid var(--divider-color);padding-bottom:5px;margin-bottom:3px}
+        .current-power{display:inline-flex;justify-content:flex-end;align-items:baseline;gap:8px;font-size:10px;line-height:12px;white-space:nowrap}
+        .current-power span,.current-power strong{font-size:10px;line-height:12px;color:var(--secondary-text-color);font-weight:400;white-space:nowrap}
+        /* Only the Watt text is colored; no icon or additional status label. */
+        .current-power strong.power-equal{color:var(--secondary-text-color)}
+        .current-power strong.power-higher{color:var(--success-color,#2e7d32)}
+        .current-power strong.power-lower{color:var(--error-color,#c62828)}
+        .tariff-row{border-bottom:0;padding-bottom:2px}
         .row span{min-width:0;color:var(--secondary-text-color);overflow-wrap:anywhere}.row strong{text-align:right;white-space:nowrap;flex:0 0 auto;font-weight:400}.row.emphasis strong{font-weight:700}.row.emphasis span{font-weight:400}
         .row .informational{color:var(--disabled-text-color,var(--secondary-text-color));font-weight:400;font-style:normal}
-        .cost-average{margin-top:4px;padding-top:10px;border-top:1px solid var(--divider-color)}
+        .cost-average{margin-top:4px;padding-top:10px;border-top:0}
         .baseline-row{align-items:center;padding:4px 0;border-bottom:1px solid var(--divider-color)}
         .baseline-row .baseline-label{display:inline-flex;flex-direction:column;align-items:flex-start;gap:0;line-height:18px}
         .baseline-meta-inline{display:block;height:10px;line-height:10px;margin-top:0}
@@ -537,14 +582,14 @@ class VerbrauchsMonitorBillingCard extends HTMLElement {
         .finance-group{margin-top:10px;padding-top:8px;border-top:2px solid var(--divider-color)}.finance-group h4{font-size:.95rem;margin:8px 0 4px;color:var(--primary-text-color)}
         .grand-balance{margin-top:10px;padding:10px;border-radius:8px;font-size:1.08rem}.grand-balance .row{border:0}.grand-balance .row strong{font-size:1.15rem}.grand-balance.liability{background:color-mix(in srgb,var(--error-color,#db4437) 12%,var(--card-background-color,#fff));color:var(--error-color,#db4437)}.grand-balance.credit{background:color-mix(in srgb,var(--success-color,#0b8043) 12%,var(--card-background-color,#fff));color:var(--success-color,#0b8043)}.grand-balance.settled{background:var(--secondary-background-color);color:var(--secondary-text-color)}.grand-balance .row span,.grand-balance .row strong{color:inherit}
         .forecast-box{margin-top:10px;padding:13px 14px;border-radius:8px;background:#fff;color:#171717;border:1.5px solid #d5d5d5}
-        .forecast-season{font-size:12px;opacity:.8;margin:3px 0 6px}.forecast-heading{font-weight:700;font-size:.96rem;margin-bottom:2px;color:#171717}.forecast-heading span{font-weight:400;color:#171717;white-space:nowrap}
-        .forecast-reliability{font-size:.76rem;line-height:1.35;color:var(--secondary-text-color);margin:0 0 8px}
-        .forecast-balance{display:flex;justify-content:space-between;gap:12px;padding:5px 0 10px;border-bottom:1px solid var(--divider-color);color:var(--primary-text-color)}.forecast-balance strong{white-space:nowrap;text-decoration-line:underline;text-decoration-style:double;text-decoration-color:#000;text-underline-offset:3px}.forecast-balance strong.positive{color:#000}.forecast-balance strong.negative{color:#d32f2f}
-        .forecast-advance{margin-top:10px;padding:12px 14px;border-radius:8px;color:#202020;border:1px solid rgba(0,0,0,.08)}
+        .forecast-season{font-size:12px;opacity:.8;margin:0 0 4px}.forecast-heading{font-weight:700;font-size:clamp(.78rem,.96rem,1rem);margin-bottom:2px;color:#171717;white-space:nowrap;letter-spacing:-.01em}.forecast-heading span{font-weight:400;color:#171717;white-space:nowrap}.reliability-spinner{display:inline-block;width:.72em;height:.72em;margin-left:.35em;vertical-align:-.05em;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:vm-spin 3s linear infinite}@keyframes vm-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.reliability-spinner{animation:none;border-right-color:currentColor}}
+        .total-row strong{font-weight:700}.forecast-reliability{font-size:.76rem;line-height:1.35;color:var(--secondary-text-color);margin:0 0 8px}
+        .forecast-balance{display:flex;justify-content:space-between;gap:12px;padding:5px 0 2px;border-bottom:0;color:var(--primary-text-color)}.forecast-balance strong{white-space:nowrap;text-decoration-line:underline;text-decoration-style:double;text-decoration-color:#000;text-underline-offset:3px}.forecast-balance strong.positive{color:#000}.forecast-balance strong.negative{color:#d32f2f}
+        .forecast-advance{margin-top:10px;padding:12px 14px;border-radius:8px;color:#202020;border:1px solid rgba(0,0,0,.08);background:#e5eff8}
         .forecast-advance.increase{background:#fbe8e7}.forecast-advance.decrease{background:#e5f3e9}.forecast-advance.steady{background:#e5eff8}
         .forecast-advance>span{display:block;font-size:.82rem;font-weight:800;letter-spacing:0;color:#202020}.forecast-start-month{font-size:.9rem;font-weight:700;color:#202020}
         .forecast-advance-line{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:4px;row-gap:4px;margin-top:3px;color:#202020}.forecast-advance-line>strong{display:inline-block;font-size:1.9rem;line-height:1.2;font-weight:800;color:#171717;white-space:nowrap}.forecast-limit-note{display:block;margin-top:6px;font-size:.72rem;color:#555}.forecast-monthly-unit{font-size:.9rem;font-weight:700;color:#202020}
-        .forecast-trend{display:inline-flex;align-items:baseline;gap:2px;font-size:.9rem;font-weight:700;white-space:normal;color:#202020}.forecast-trend b{font-size:1.2rem;line-height:1;font-weight:900;margin-left:1px}.forecast-unavailable{padding-top:8px;color:var(--secondary-text-color);font-size:.88rem}
+        .forecast-trend{display:inline-flex;align-items:baseline;gap:2px;font-size:.9rem;font-weight:700;white-space:normal;color:#202020}.forecast-trend b{font-size:1.2rem;line-height:1;font-weight:900;margin-left:1px}.forecast-unavailable{margin-top:12px;padding-top:12px;border-top:1px solid var(--divider-color);color:var(--secondary-text-color);font-size:.88rem;line-height:1.5}
         .contract-edit{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:14px;margin-top:14px;border:1px solid var(--divider-color);border-radius:10px}
         .contract-edit h4{margin:0}.meter-changes-editor{display:grid;gap:8px}.meter-change-row{display:grid;gap:8px;padding:10px;border:1px solid var(--divider-color);border-radius:8px}.meter-change-row button,.meter-changes-editor>button{justify-self:start;padding:6px 10px;border:1px solid var(--divider-color);border-radius:6px;background:var(--secondary-background-color);color:var(--primary-text-color);cursor:pointer}.contract-edit label{display:flex;flex-direction:column;gap:4px;color:var(--secondary-text-color);font-size:12px}
         .contract-edit input{box-sizing:border-box;width:100%;min-width:0;padding:8px;border:1px solid var(--divider-color);border-radius:6px;background:var(--card-background-color);color:var(--primary-text-color)}

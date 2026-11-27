@@ -21,16 +21,16 @@ def test_baseline_metadata_is_inline_and_compact_without_extra_row():
 
 def test_due_advance_label_only_drops_word_faellige():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text()
-    assert 'withColon(t("Abschläge","Advances"))' in source
+    assert 'monthlyAdvanceGroups.map(group =>' in source
     assert 'Fällige Abschläge' not in source
-    assert 'money(finance.advancePaid)' in source
+    assert 'money(finance.advancePaid+finance.additionalPayments+finance.corrections)' in source
 
 def test_reset_labels_changed_only_for_meter_and_billing_in_both_languages():
     for lang, expected in (("de", ("Zähler zurücksetzen", "Abrechnungen zurücksetzen")), ("en", ("Reset meters", "Reset billing"))):
-        data = json.loads((INTEGRATION / "translations" / f"{lang}.json").read_text())["options"]["step"]["data_management"]["data"]
+        data = json.loads((INTEGRATION / "translations" / f"{lang}.json").read_text())["options"]["step"]["reset_data"]["data"]
         assert data["meters"] == expected[0] and data["billing"] == expected[1]
-        assert data["contracts"] == ("Vertrag" if lang == "de" else "Contract")
-        assert data["database"] == ("Datenbank" if lang == "de" else "Database")
+        assert data["contracts"] == ("Vertrag zurücksetzen" if lang == "de" else "Reset contracts")
+        assert "database" not in data
 
 def test_database_time_is_localized_and_description_uses_real_newlines():
     flow = (INTEGRATION / "config_flow.py").read_text()

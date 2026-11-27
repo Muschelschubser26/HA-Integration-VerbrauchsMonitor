@@ -34,7 +34,7 @@ def test_ledger_keeps_unrounded_energy_and_balance_values():
 def test_feed_in_balance_sensor_does_not_round_intermediate_amounts():
     source = SENSOR.read_text(encoding="utf-8")
     assert 'energy_amount = money_amount(energy_delta * price / Decimal(100))' in source
-    assert 'base_gross = money_amount(base_gross_annual * Decimal(months) / Decimal(12))' in source
+    assert 'accrued_annual_base_price(base_gross_annual, billing_start_dt, now_local)' in source
     ledger = (ROOT / "custom_components/verbrauchsmonitor/ledger.py").read_text(encoding="utf-8")
     assert 'additional_payments += amount' in ledger
     assert 'credits += abs(amount)' in ledger
@@ -68,9 +68,10 @@ def test_period_progress_occupies_the_baseline_metadata_spacing_without_extra_ga
     assert value in card and progress in card
     assert card.index(value) < card.index(progress)
     assert '<div class="period-divider"></div>' not in card
-    assert '.period-row{align-items:center;padding:4px 0;border-bottom:1px solid var(--divider-color)}' in card
+    assert '.period-row{align-items:center;padding:4px 0 0;border-bottom:0}' in card
+    assert '.period-meta-row{display:flex;align-items:center;justify-content:space-between' in card
     assert '.period-label{display:inline-flex;flex-direction:column;align-items:flex-start;gap:0;line-height:18px}' in card
-    assert '.period-progress{display:block;margin:0;font-size:9px;line-height:10px}' in card
+    assert '.period-progress{display:block;margin:0;font-size:10px;line-height:12px;color:var(--secondary-text-color)}' in card
 
 
 def test_pricing_backend_converts_net_feed_in_tariff_to_exact_gross_value():

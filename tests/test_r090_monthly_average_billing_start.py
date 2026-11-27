@@ -8,14 +8,14 @@ def test_monthly_average_uses_billing_period_start_not_baseline_entry_date():
     source = CARD.read_text()
     assert 'a.billing_period_start || a.billing_start || a.contract_start' in source
     assert 'consumption_baseline_updated_at' not in source
-    assert 'const today = new Date();' in source
+    assert 'monthly_advance_groups' in source
     assert 'const billingStartTimestamp = periodStart;' in source
     assert 'consumption_baseline_updated_at' not in source
 
 
 def test_monthly_average_has_its_own_visual_separator():
     source = CARD.read_text()
-    assert '.cost-average{margin-top:4px;padding-top:10px;border-top:1px solid var(--divider-color)}' in source
+    assert '.cost-average{margin-top:4px;padding-top:10px;border-top:0}' in source
     assert 'class="row cost-average"' in source
 
 
@@ -28,3 +28,10 @@ def test_monthly_average_uses_total_accrued_period_costs():
     source = CARD.read_text()
     assert 'totalCosts / elapsedDays * 30.436875' in source
     assert 'base / 12 * 30.436875' not in source
+
+
+def test_monthly_average_uses_exact_current_timestamp_not_whole_calendar_days():
+    card = (ROOT / "custom_components/verbrauchsmonitor/frontend/verbrauchsmonitor-card.js").read_text()
+    assert 'const now = new Date();' in card
+    assert '(now.getTime() - billingStart.getTime()) / 86400000' in card
+    assert 'Math.floor((\n              Date.UTC(today.getFullYear()' not in card

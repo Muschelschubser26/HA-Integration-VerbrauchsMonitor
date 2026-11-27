@@ -51,9 +51,11 @@ def expected_entity_ids(options: dict) -> dict[str, str]:
         for config_key, (role, _label, _icon) in ROLE_CONFIG.items():
             if meter.get(config_key):
                 expected[f"{meter_id}_{role}"] = f"sensor.{ids[role]}"
-        expected[f"{meter_id}_{slugify_meter_name(str(meter.get('name') or 'Stromzähler'))}_consumption_kontostand"] = f"sensor.{ids['consumption_balance']}"
+        # BalanceSensor unique IDs use the German role suffix. Keep these keys
+        # exactly aligned with sensor.py so legacy entity IDs are migrated.
+        expected[f"{meter_id}_{slugify_meter_name(str(meter.get('name') or 'Stromzähler'))}_verbrauch_kontostand"] = f"sensor.{ids['consumption_balance']}"
         if meter.get("feed_in_entity"):
-            expected[f"{meter_id}_{slugify_meter_name(str(meter.get('name') or 'Stromzähler'))}_feed_in_kontostand"] = f"sensor.{ids['feed_in_balance']}"
+            expected[f"{meter_id}_{slugify_meter_name(str(meter.get('name') or 'Stromzähler'))}_einspeisung_kontostand"] = f"sensor.{ids['feed_in_balance']}"
         slug = slugify_meter_name(str(meter.get("name") or "Stromzähler"))
         if meter.get("forecast_consumption_enabled", True):
             expected[f"{meter_id}_consumption_prognose_annual_balance"] = f"sensor.verbrauchsmonitor_{slug}_consumption_prognose_annual_balance"

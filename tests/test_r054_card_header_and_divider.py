@@ -17,5 +17,8 @@ def test_card_editor_has_no_manual_title_field():
 
 def test_last_meter_detail_row_has_no_thin_separator():
     source = (ROOT / "custom_components/verbrauchsmonitor/frontend/verbrauchsmonitor-card.js").read_text(encoding="utf-8")
-    assert '.side > .row:nth-child(5){border-bottom:0}' in source
+    assert '.meter-reading-row{border-bottom:1px solid var(--divider-color);padding-bottom:5px;margin-bottom:3px}' in source
+    assert '.current-power{display:inline-flex;justify-content:flex-end' in source
+    assert '.period-meta-row{display:flex;align-items:center;justify-content:space-between' in source
+    assert 'font-size:10px;line-height:12px' in source
     assert '.finance-group{margin-top:10px;padding-top:8px;border-top:2px solid var(--divider-color)}' in source

@@ -1,7 +1,7 @@
 """Small, deterministic billing calculations used by the integration."""
 from __future__ import annotations
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 @dataclass(frozen=True)
 class Balance:
@@ -210,3 +210,46 @@ def signed_customer_balance(*, direction: str, amount) -> Decimal:
     elif direction != "feed_in":
         raise ValueError("Unbekannter Abrechnungsbereich")
     return value
+
+
+def build_monthly_advance_groups(*, period_start, as_of=None, period_end=None, monthly_advance_gross=0, monthly_amounts=None, bookings=None):
+    """Group each elapsed monthly advance by effective amount within a billing period.
+
+    Project rule: each elapsed month in the active billing period counts as a
+    paid monthly advance. Explicit advance bookings do not create a second
+    amount for the same month. The effective monthly amount is taken from the
+    month-specific history, falling back to the configured default.
+    """
+    from datetime import date
+
+    today = as_of or date.today()
+    if isinstance(today, str):
+        today = date.fromisoformat(today[:10])
+    if not period_start:
+        return []
+    start = date.fromisoformat(str(period_start)[:10])
+    end = today
+    if period_end:
+        end = min(end, date.fromisoformat(str(period_end)[:10]))
+    if start > end:
+        return []
+
+    overrides = monthly_amounts or {}
+    groups = []
+    year, month = start.year, start.month
+    while date(year, month, 1) <= end:
+        key = f"{year:04d}-{month:02d}"
+        amount = _decimal(overrides.get(key, monthly_advance_gross)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+        if groups and groups[-1]["to_month"] == previous_key and groups[-1]["monthly_amount"] == amount:
+            groups[-1]["count"] += 1
+            groups[-1]["total"] = (groups[-1]["total"] + amount).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+            groups[-1]["to_month"] = key
+        else:
+            groups.append({"from_month": key, "to_month": key, "count": 1,
+                           "monthly_amount": amount, "total": amount})
+        previous_key = key
+        if month == 12:
+            year, month = year + 1, 1
+        else:
+            month += 1
+    return [{key: (float(value) if isinstance(value, Decimal) else value) for key, value in group.items()} for group in groups]
