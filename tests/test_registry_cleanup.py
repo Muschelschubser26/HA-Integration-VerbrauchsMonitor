@@ -108,3 +108,23 @@ def test_active_forecast_entity_ids_have_canonical_registry_targets():
     assert result["meter-a_consumption_prognose_monthly_advance"] == "sensor.verbrauchsmonitor_haus_verbrauch_consumption_prognose_monthly_advance"
     assert result["meter-a_feed_in_prognose_annual_balance"] == "sensor.verbrauchsmonitor_haus_verbrauch_feed_in_prognose_annual_balance"
     assert result["meter-a_feed_in_prognose_monthly_advance"] == "sensor.verbrauchsmonitor_haus_verbrauch_feed_in_prognose_monthly_advance"
+
+
+def test_balance_unique_ids_match_canonical_entity_registry_migration_keys():
+    tree = ast.parse(SOURCE.read_text())
+    node = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == "expected_entity_ids")
+    module = ast.Module(body=[node], type_ignores=[])
+    namespace = {
+        "ROLE_CONFIG": {},
+        "slugify_meter_name": lambda value: value.lower().replace(" ", "_"),
+        "meter_entity_object_ids": lambda value: {
+            "consumption_balance": "verbrauchsmonitor_haus_verbrauch_verbrauch_kontostand",
+            "feed_in_balance": "verbrauchsmonitor_haus_verbrauch_einspeisung_kontostand",
+        },
+    }
+    exec(compile(module, str(SOURCE), "exec"), namespace)
+    mapping = namespace["expected_entity_ids"]({"meters": [{
+        "id": "meter-a", "name": "Haus Verbrauch", "feed_in_entity": "sensor.export"
+    }]})
+    assert mapping["meter-a_haus_verbrauch_verbrauch_kontostand"] == "sensor.verbrauchsmonitor_haus_verbrauch_verbrauch_kontostand"
+    assert mapping["meter-a_haus_verbrauch_einspeisung_kontostand"] == "sensor.verbrauchsmonitor_haus_verbrauch_einspeisung_kontostand"
