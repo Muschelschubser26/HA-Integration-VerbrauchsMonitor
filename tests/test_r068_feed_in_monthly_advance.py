@@ -13,7 +13,7 @@ def test_feed_in_contract_preserves_monthly_advance_input():
 
 def test_feed_in_card_displays_monthly_advance_without_payment_section():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text(encoding="utf-8")
-    assert 't("mtl.","monthly")' in source and 'Einspeisevergütung' in source
+    assert 'Einspeisevergütung' in source and 'monthlyAdvanceGroups.map(group =>' in source
     assert 'isFeed && monthlyAdvance>0?field(t("Monatlicher Abschlag","Monthly advance"),money(monthlyAdvance))' not in source
-    assert 't("Erhaltene Abschläge","Advances received")' in source
-    assert 'money(finance.advancePaid)' in source
+    assert 't("Gesamt geleistete Zahlungen","Total payments received")' in source
+    assert 'money(finance.advancePaid+finance.additionalPayments+finance.corrections)' in source

@@ -16,7 +16,7 @@ def _load_forecast():
     return module
 
 
-def test_final_three_payment_dates_keep_at_least_70_percent_of_configured_advance():
+def test_final_payment_month_does_not_generate_a_new_monthly_advance_recommendation():
     forecast = _load_forecast()
     result = forecast.calculate_forecast(
         direction="consumption", current_reading="1000", baseline_reading="1000",
@@ -28,11 +28,12 @@ def test_final_three_payment_dates_keep_at_least_70_percent_of_configured_advanc
     assert result["months_remaining"] == 1
     assert result["configured_monthly_advance_eur"] == 200.0
     assert result["advance_recommendation_final_period_protection"] is True
-    assert result["advance_recommendation_minimum_eur"] == 140.0
-    assert result["recommended_monthly_advance_eur"] == 140.0
+    assert result["advance_recommendation_minimum_eur"] == 0.0
+    assert result["recommended_monthly_advance_eur"] == 0.0
+    assert result["forecast_recommendation_available"] is False
 
 
-def test_recommendation_is_not_reduced_below_70_percent_of_average_total_costs():
+def test_recommendation_never_uses_an_artificial_minimum_floor():
     forecast = _load_forecast()
     result = forecast.calculate_forecast(
         direction="consumption", current_reading="2000", baseline_reading="1000",
@@ -41,45 +42,30 @@ def test_recommendation_is_not_reduced_below_70_percent_of_average_total_costs()
         monthly_advance_net="100", period_months=5,
         booked_advances="400", future_scheduled_advances="100",
     )
-    assert result["recommended_monthly_advance_eur"] >= result["advance_recommendation_minimum_eur"]
-    assert result["advance_recommendation_minimum_eur"] >= 0.70 * (
-        result["accrued_energy_cost_eur"] + result["accrued_base_price_eur"]
-    ) / (result["basis_days"] / 30.436875) - 0.01
+    assert result["advance_recommendation_minimum_eur"] == 0.0
+    assert result["recommended_monthly_advance_eur"] == 0.0
+    assert result["forecast_recommendation_available"] is False
 
 
-def test_reliability_target_has_at_least_40_percent_foundation():
+def test_reliability_is_unavailable_without_sufficient_history():
     forecast = _load_forecast()
     result = forecast.reliability_score(history={
         "history_months": 0, "coverage_percent": 0, "gap_days_max": 999,
         "quality": 0, "usable": False,
     }, method="linear_elapsed_period_average")
-    assert result["forecast_reliability_percent"] >= 40
+    assert result["forecast_reliability_percent"] is None
 
 
-def test_reliability_moves_gradually_and_respects_one_point_per_day():
+def test_reliability_recomputes_directly_from_current_evidence():
     forecast = _load_forecast()
     start = datetime(2026, 11, 1, tzinfo=timezone.utc)
-    state = {"score": 43.6, "last_evaluated": start.isoformat()}
-    history = {
-        "history_months": 24, "coverage_percent": 100, "gap_days_max": 0,
-        "quality": 100, "usable": True, "two_cycle_months": 12,
-    }
-    after_one_hour = forecast.update_reliability_state(
-        state, history=history, method="seasonal_24m",
-        now=datetime(2026, 11, 1, 1, tzinfo=timezone.utc),
+    history = {"history_months": 24, "coverage_percent": 100, "gap_days_max": 1,
+               "quality": 100, "usable": True, "sample_count": 300}
+    state = forecast.update_reliability_state(
+        {"score": 43.6, "last_evaluated": start.isoformat()},
+        history=history, method="seasonal_24m", now=start,
     )
-    assert 43.6 <= after_one_hour["score"] <= 43.7
-    after_ten_days = forecast.update_reliability_state(
-        state, history=history, method="seasonal_24m",
-        now=datetime(2026, 11, 11, tzinfo=timezone.utc),
-    )
-    assert after_ten_days["score"] <= 53.6
-    assert after_ten_days["score"] > 43.6
-    after_one_day = forecast.update_reliability_state(
-        state, history=history, method="seasonal_24m",
-        now=datetime(2026, 11, 2, tzinfo=timezone.utc),
-    )
-    assert after_one_day["score"] == 44.6
+    assert state["score"] == forecast.reliability_score(history=history, method="seasonal_24m")["forecast_reliability_percent"]
 
 
 def test_meter_state_change_does_not_reload_full_recorder_history():

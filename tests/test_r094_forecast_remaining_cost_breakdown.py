@@ -33,12 +33,11 @@ def test_remaining_forecast_costs_separate_energy_and_prorated_base_price():
         future_scheduled_advances="200.00",
     )
 
-    # Current accrued base charge is four calendar months; the full forecast
-    # period covers five. The remaining base charge is therefore exactly one
-    # prorated month and is kept separate from remaining energy costs.
-    assert result["accrued_base_price_eur"] == 79.87
-    assert result["forecast_base_price_total_eur"] == 99.84
-    assert result["remaining_base_price_eur"] == 19.97
+    # Base price accrues continuously by elapsed seconds, matching the live
+    # balance sensor rather than counting whole calendar months.
+    assert result["accrued_base_price_eur"] == 75.50
+    assert result["forecast_base_price_total_eur"] == 100.44
+    assert result["remaining_base_price_eur"] == 24.94
     assert result["remaining_energy_cost_eur"] > 0
     assert result["remaining_costs_including_base_price_eur"] == round(
         result["remaining_energy_cost_eur"] + result["remaining_base_price_eur"], 2

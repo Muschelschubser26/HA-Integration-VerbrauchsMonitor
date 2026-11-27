@@ -99,4 +99,12 @@ def test_measurement_entity_ids_follow_meter_and_direction_convention():
         "feed_in_power": "verbrauchsmonitor_einspeisung_neu_einspeisung_leistung",
         "consumption_balance": "verbrauchsmonitor_einspeisung_neu_verbrauch_kontostand",
         "feed_in_balance": "verbrauchsmonitor_einspeisung_neu_einspeisung_kontostand",
+        "consumption_today": "verbrauchsmonitor_einspeisung_neu_tagesverbrauch",
+        "feed_in_today": "verbrauchsmonitor_einspeisung_neu_tageseinspeisung",
+        "consumption_week": "verbrauchsmonitor_einspeisung_neu_wochenverbrauch",
+        "consumption_month": "verbrauchsmonitor_einspeisung_neu_monatsverbrauch",
+        "consumption_year": "verbrauchsmonitor_einspeisung_neu_jahresverbrauch",
+        "feed_in_week": "verbrauchsmonitor_einspeisung_neu_wocheneinspeisung",
+        "feed_in_month": "verbrauchsmonitor_einspeisung_neu_monatseinspeisung",
+        "feed_in_year": "verbrauchsmonitor_einspeisung_neu_jahreseinspeisung",
     }

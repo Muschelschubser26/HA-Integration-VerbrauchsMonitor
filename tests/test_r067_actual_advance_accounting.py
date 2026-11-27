@@ -47,8 +47,9 @@ def test_recorded_advances_are_limited_to_billing_window():
 
 def test_balance_sensor_counts_first_of_month_advance_as_paid_automatically():
     source = (INTEGRATION / "sensor.py").read_text()
-    assert 'advances = money_amount(expected_advances)' in source
-    assert '"recorded_advances_paid"] = float(advances)' in source
+    assert 'advances = money_amount(expected_advance_amount)' in source
+    assert 'expected_advances_total' in source
+    assert '"recorded_advances_paid"] = float(money_amount(paid_advances))' in source
     assert '"automatic_monthly_advances_paid"] = float(advances)' in source
     assert 'apply_booking_corrections(' in source
 
@@ -57,8 +58,8 @@ def test_feed_in_card_omits_payment_section_and_uses_credit_wording():
     source = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text()
     assert 'isFeed?t("Vergütung","Remuneration"):t("Kosten","Costs")' in source
     assert 't("Aktueller Abrechnungszeitraum","Current billing period")' in source
-    assert 't("Ø Aktuell im Monat","Average current month")' in source
+    assert 't("Ø im Monat","Average per month")' in source
     assert 'const balanceLabel = balanceValue === null' in source
     assert 't("Offener Betrag","Outstanding amount")' in source
     assert 't("Aktuelles Guthaben","Current credit")' in source
-    assert 't("Erhaltene Abschläge","Advances received")' in source
+    assert 't("Gesamt geleistete Zahlungen","Total payments received")' in source

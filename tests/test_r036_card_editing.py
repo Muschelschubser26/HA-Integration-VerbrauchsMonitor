@@ -22,6 +22,6 @@ def test_contract_selector_has_disambiguating_labels_and_default():
 
 def test_revision_metadata_is_r036():
     const = (INTEGRATION / "const.py").read_text()
-    assert 'INTEGRATION_VERSION: Final = "0.0.2-dev-r111"' in const
+    assert 'INTEGRATION_VERSION: Final = "0.0.1"' in const
     source = (INTEGRATION / "config_flow.py").read_text()
-    assert 'description_placeholders={"revision": "R111"}' in source
+    assert 'description_placeholders={"revision": RELEASE_REVISION, "version": RELEASE_VERSION, "stage": RELEASE_STAGE}' in source

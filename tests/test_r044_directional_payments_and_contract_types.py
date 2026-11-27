@@ -9,8 +9,10 @@ def test_billing_card_calculates_financials_from_each_direction_source():
     assert 'const financeC=financeFor(counter, "consumption", balance), financeF=financeFor(feed, "feed_in", feedBalance);' in source
     assert "const sourceState=isFeed?feed:counter, finance=isFeed?financeF:financeC;" in source
     assert 'const recordedAdvances = validBookings.filter(b => b.booking_type === "advance")' in source
-    assert 'const advancePaid = Number.isFinite(Number(sourceAttributes.recorded_advances_paid))' in source
-    assert ': calculatedAdvancePaid;' in source
+    assert 'const groupedAdvanceTotal = monthlyAdvanceGroups.reduce' in source
+    assert ': recordedAdvanceTotal;' in source
+    assert 'monthlyAdvanceGroups' in source
+    assert 'each elapsed month is counted as a paid monthly advance' in source
     assert 'Bisher fällige Abschläge' not in source
 
 

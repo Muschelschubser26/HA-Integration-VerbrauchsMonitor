@@ -36,12 +36,13 @@ def test_forecast_visibility_is_per_meter_and_direction():
     assert '"forecast_feed_in_enabled": entry.data.get("forecast_feed_in_enabled", False)' in sensor
 
 
-def test_possible_monthly_advance_label_is_used():
-    assert 't("Möglicher Monatsabschlag:", "Possible monthly advance:")' in CARD.read_text()
+def test_neutral_monthly_advance_label_is_used():
+    assert 't("Voraussichtlicher monatlicher Abschlag:", "Likely monthly advance:")' in CARD.read_text()
 
 
 def test_elapsed_period_label_is_rendered_for_both_directions():
     card = CARD.read_text()
     assert 't("Monate","months")' in card
     assert 't("Tage","days")' in card
-    assert 'elapsed/totalDays*100' in card
+    assert 'elapsedMs / totalMs * 100' in card
+    assert 'minimumFractionDigits:2, maximumFractionDigits:2' in card

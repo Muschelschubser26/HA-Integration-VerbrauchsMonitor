@@ -13,5 +13,5 @@ def test_submit_sends_meter_change_records():
     assert 'if(!Number.isFinite(value)||value<0)' in source
 def test_revision_metadata_is_consistent():
     const = (ROOT / "custom_components/verbrauchsmonitor/const.py").read_text()
-    assert 'INTEGRATION_VERSION: Final = "0.0.2-dev-r111"' in const
-    assert "Prognose" in (ROOT / "README.md").read_text()
+    assert 'INTEGRATION_VERSION: Final = "0.0.1"' in const
+    assert "forecast" in (ROOT / "README.md").read_text().lower()

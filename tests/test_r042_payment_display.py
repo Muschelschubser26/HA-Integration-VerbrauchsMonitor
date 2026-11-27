@@ -6,7 +6,7 @@ INTEGRATION = ROOT / "custom_components/verbrauchsmonitor"
 def test_card_hides_zero_value_payment_rows_and_shows_nonzero_values():
     card = (INTEGRATION / "frontend/verbrauchsmonitor-card.js").read_text()
     assert '"Tatsächlich geleistete Abschläge"' not in card
-    assert 't("Abschläge","Advances")' in card
+    assert 'monthlyAdvanceGroups.map(group =>' in card
     assert 't("Summe der Sonderzahlungen","Total additional payments")' in card
     assert 't("Summe der Sonderzahlung","Total additional payment")' in card
     assert 'finance.additionalPayments !== 0 ? field' in card

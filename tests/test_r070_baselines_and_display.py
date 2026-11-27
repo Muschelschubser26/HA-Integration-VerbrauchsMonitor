@@ -17,7 +17,7 @@ def test_billing_card_shows_start_reading_and_three_provenance_states():
 
 def test_feed_in_monthly_advance_is_inline_and_not_a_separate_row():
     card = (INTEGRATION / "frontend" / "verbrauchsmonitor-card.js").read_text(encoding="utf-8")
-    assert 'Einspeisevergütung' in card and 't("mtl.","monthly")' in card
+    assert 'Einspeisevergütung' in card and 'monthlyAdvanceGroups.map(group =>' in card
     assert 'isFeed && monthlyAdvance>0?field(t("Monatlicher Abschlag"' not in card
 
 
@@ -26,7 +26,7 @@ def test_all_billing_row_labels_receive_colon_and_parenthetical_text_is_grey():
     assert 'const withColon = label =>' in card
     assert 'esc(withColon(label))' in card
     assert '.row .informational{color:var(--disabled-text-color' in card
-    assert 'withColon(t("Anteiliger angefallener Grundpreis"' in card
+    assert 'withColon(t("Anteiliger Grundpreis"' in card
 
 
 def test_baseline_manual_corrections_keep_history_and_dates():

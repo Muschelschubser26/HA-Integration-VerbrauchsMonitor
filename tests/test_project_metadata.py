@@ -6,15 +6,15 @@ INTEGRATION = ROOT / "custom_components/verbrauchsmonitor"
 def test_manifest_metadata():
     manifest = json.loads((INTEGRATION / "manifest.json").read_text())
     assert manifest["domain"] == "verbrauchsmonitor"
-    assert manifest["version"] == "0.0.2"
+    assert manifest["version"] == "0.0.1"
     assert manifest["config_flow"] is True
 
 def test_central_translated_management_sections():
     for language in ("de", "en"):
         data = json.loads((INTEGRATION / f"translations/{language}.json").read_text())
         menu = data["options"]["step"]["init"]["menu_options"]
-        assert list(menu) == ["contracts", "meters", "forecast", "billing", "data_management", "about"]
-        assert menu["billing"] in ("Abrechnungen und Abschläge", "Bills and advances")
+        assert list(menu) == ["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"]
+        assert menu["billing"] in ("Monatsabschlag und Buchungen", "Monthly advances & bookings")
         assert "selected" in data["options"]["step"]["meters"]["data"]
         assert "previous_consumption_reading" in data["options"]["step"]["meter_edit"]["data"]
         assert "previous_feed_in_reading" in data["options"]["step"]["meter_edit"]["data"]
@@ -25,7 +25,7 @@ def test_central_config_flow_and_legacy_migration():
     source = (INTEGRATION / "config_flow.py").read_text()
     init = (ROOT / "custom_components/verbrauchsmonitor/__init__.py").read_text()
     assert 'async_create_entry(title="VerbrauchsMonitor", data={})' in source
-    assert 'menu_options=["contracts", "meters", "forecast", "billing", "data_management", "about"]' in source
+    assert 'menu_options=["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"]' in source
     assert "async_migrate_entry" in init and "legacy_meter" in init
 
 def test_card_has_balance_tiles_and_support_link():

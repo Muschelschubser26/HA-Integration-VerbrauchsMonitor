@@ -25,4 +25,4 @@ def test_already_configured_abort_is_translated():
 
 def test_release_version_is_r011():
     manifest = json.loads((INTEGRATION / "manifest.json").read_text())
-    assert manifest["version"] == "0.0.2"
+    assert manifest["version"] == "0.0.1"

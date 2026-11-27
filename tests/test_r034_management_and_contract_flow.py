@@ -6,12 +6,12 @@ INTEGRATION = ROOT / "custom_components/verbrauchsmonitor"
 
 def test_management_menu_order_and_labels():
     source = (INTEGRATION / "config_flow.py").read_text()
-    assert 'menu_options=["contracts", "meters", "forecast", "billing", "data_management", "about"]' in source
+    assert 'menu_options=["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"]' in source
     for lang in ("de", "en"):
         data = json.loads((INTEGRATION / f"translations/{lang}.json").read_text())
         menu = data["options"]["step"]["init"]["menu_options"]
-        assert list(menu) == ["contracts", "meters", "forecast", "billing", "data_management", "about"]
-    assert json.loads((INTEGRATION / "translations/de.json").read_text())["options"]["step"]["init"]["menu_options"]["billing"] == "Abrechnungen und Abschläge"
+        assert list(menu) == ["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"]
+    assert json.loads((INTEGRATION / "translations/de.json").read_text())["options"]["step"]["init"]["menu_options"]["billing"] == "Monatsabschlag und Buchungen"
 
 def test_contract_selection_is_hidden_until_edit_or_delete():
     source = (INTEGRATION / "config_flow.py").read_text()
@@ -29,7 +29,8 @@ def test_database_menu_and_reset_scopes_are_separate():
     assert 'menu_options=["database_optimize", "database_reset"]' in source
     assert "database_info" in source
     assert 'async_step_data_management_confirm' in source
-    assert '"contracts", "meters", "billing", "forecasts", "database"' in source
+    assert 'menu_options=["reset_data", "recorder_entities", "database"]' in source
+    assert 'selected = [key for key in ("contracts", "meters", "billing", "forecasts", "periods")' in source
     assert "reset_database" in source
 
 def test_reset_database_creates_backup_before_removing_data():

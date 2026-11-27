@@ -28,8 +28,9 @@ def test_remaining_costs_use_accrued_monthly_average_including_base_price():
     accrued = Decimal(str(result["accrued_energy_cost_eur"])) + Decimal(str(result["accrued_base_price_eur"]))
     elapsed_days = Decimal(str(result["basis_days"]))
     remaining_days = Decimal(str((date(2026, 12, 31) - date(2026, 11, 23)).days))
-    expected = (accrued / elapsed_days * remaining_days).quantize(Decimal("0.01"))
-    assert Decimal(str(result["remaining_costs_including_base_price_eur"])) == expected
+    expected_energy = (Decimal(str(result["accrued_energy_cost_eur"])) / elapsed_days * remaining_days).quantize(Decimal("0.01"))
+    expected_base = Decimal(str(result["remaining_base_price_eur"]))
+    assert Decimal(str(result["remaining_costs_including_base_price_eur"])) == expected_energy + expected_base
     assert result["remaining_base_price_eur"] > 0
     assert result["expected_year_end_balance_eur"] == round(
         800.00 + 200.00 - result["annual_value_eur"], 2
@@ -52,8 +53,9 @@ def test_remaining_costs_include_accrued_extra_charges_once():
         accrued_extra_charges="15.00",
     )
     assert with_extra["accrued_extra_charges_eur"] == 15.0
-    assert with_extra["remaining_costs_including_base_price_eur"] > plain["remaining_costs_including_base_price_eur"]
-    assert with_extra["annual_value_eur"] > plain["annual_value_eur"]
+    # A one-off charge is included once, not projected as a recurring daily cost.
+    assert with_extra["remaining_costs_including_base_price_eur"] == plain["remaining_costs_including_base_price_eur"]
+    assert with_extra["annual_value_eur"] == plain["annual_value_eur"] + 15.00
 
 
 def test_feed_in_never_adds_base_price_to_monthly_average_remainder():
@@ -67,3 +69,23 @@ def test_feed_in_never_adds_base_price_to_monthly_average_remainder():
     assert result["forecast_base_price_total_eur"] == 0
     assert result["accrued_base_price_eur"] == 0
     assert result["remaining_base_price_eur"] == 0
+
+
+def test_fixed_reference_case_has_cent_exact_expected_values():
+    """Stable reference case: fixed readings/tariff/payments detect drift."""
+    forecast = _load_forecast()
+    result = forecast.calculate_forecast(
+        direction="consumption", current_reading="1250.500", baseline_reading="1000.000",
+        period_start="2026-01-01", today=date(2026, 6, 30), price_net="25.00",
+        vat_rate=19, annual_base_price_net="120.00", period_months=12,
+        booked_advances="600.00", future_scheduled_advances="600.00",
+    )
+    assert result["annual_energy_kwh"] == 505.152
+    assert result["accrued_energy_cost_eur"] == 74.52
+    assert result["accrued_base_price_eur"] == 70.81
+    assert result["remaining_costs_including_base_price_eur"] == 147.75
+    assert result["annual_value_eur"] == 293.08
+    assert result["expected_year_end_balance_eur"] == 906.92
+    assert result["recommended_monthly_advance_eur"] == 0.0
+    assert result["forecast_recommendation_available"] is False
+    assert result["forecast_recommendation_unavailable_reason"] == "no_remaining_payment_gap"

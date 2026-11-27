@@ -26,9 +26,9 @@ def test_feed_in_tariff_precision_matches_the_displayed_energy_amount():
     assert gross == Decimal("34.2006")
     energy = _money(Decimal("5362.713") * gross / Decimal("100"))
     assert energy == Decimal("1834.08")
-    # Display formatting is two decimals; calculation precision remains exact.
+    # Display formatting exposes the exact gross tariff when extra precision matters.
     assert gross == Decimal("34.2006")
-    assert f"{gross:.2f}" == "34.20"
+    assert f"{gross:.4f}" == "34.2006"
 
 
 def test_consumption_line_items_and_period_total_use_one_rounding_rule():
