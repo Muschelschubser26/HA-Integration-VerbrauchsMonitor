@@ -132,6 +132,24 @@ Details und Updatehinweise stehen in der [Installations- und Updateanleitung](do
 
 ---
 
+## ☕ Entwicklung unterstützen
+
+Gefällt dir der VerbrauchsMonitor und hilft dir die Integration bei der Übersicht über deinen Energieverbrauch?
+
+Wenn du die Weiterentwicklung unterstützen möchtest, freue ich mich über einen Kaffee. Deine Unterstützung hilft dabei, neue Funktionen zu entwickeln, Verbesserungen umzusetzen und die Integration weiter zu pflegen.
+
+<p align="center">
+  <a href="https://buymeacoffee.com/muschelschubser26">
+    <img src="https://img.shields.io/badge/Buy%20Me%20a%20Coffee-Support%20Development-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy Me a Coffee">
+  </a>
+</p>
+
+<p align="center">
+  Vielen Dank für deine Unterstützung! ❤️
+</p>
+
+---
+
 <p align="center">
   <strong>VerbrauchsMonitor</strong><br>
   Smarte Energieübersicht – lokal in Home Assistant.
