@@ -19,7 +19,8 @@ async def async_setup(hass: HomeAssistant, config: dict) -> bool:
     await async_register_card(hass)
     async def handle_status(call):
         """Return the current local database status through the registered integration service."""
-        result=await hass.async_add_executor_job(db_status, hass); hass.states.async_set("sensor.verbrauchsmonitor_datenbankstatus", result.get("status", "error"), result)
+        entries = [entry for entry in hass.config_entries.async_entries(DOMAIN)]
+        result=await hass.async_add_executor_job(db_status, hass, entries); hass.states.async_set("sensor.verbrauchsmonitor_datenbankstatus", result.get("status", "error"), result)
     async def handle_optimize(call):
         """Run the local database optimization operation in the executor."""
         result=await hass.async_add_executor_job(db_optimize, hass); hass.states.async_set("sensor.verbrauchsmonitor_datenbankstatus", result.get("status", "error"), result)
@@ -315,6 +316,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         list(entry.options.get("meters", [])),
     )
     await hass.async_add_executor_job(load_data, hass)
+    # R169: keep contracts and logical meters in dedicated SQLite domain
+    # tables as well as in their existing config-entry authority. Pass the
+    # complete current entry set so stale projections can be reconciled safely.
+    from .database import sync_config_entries
+    await hass.async_add_executor_job(
+        sync_config_entries,
+        hass,
+        hass.config_entries.async_entries(DOMAIN),
+    )
     hass.data.setdefault(DOMAIN, {})
     hass.data[DOMAIN][entry.entry_id] = {"entry": entry}
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)

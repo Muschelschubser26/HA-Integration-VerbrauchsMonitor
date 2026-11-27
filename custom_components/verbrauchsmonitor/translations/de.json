@@ -18,8 +18,9 @@
         "menu_options": {
           "contracts": "Vertragsdaten",
           "meters": "Zähler",
-          "forecast": "Prognose",
-          "billing": "Abrechnungen und Abschläge",
+          "forecast": "Prognose & Zuverlässigkeit",
+          "settlement": "Abrechnung",
+          "billing": "Monatsabschlag und Buchungen",
           "data_management": "Datenverwaltung",
           "about": "Über"
         }
@@ -49,15 +50,16 @@
         "submit": "Weiter"
       },
       "billing": {
-        "title": "Abrechnungen und Abschläge",
-        "description": "Abrechnungen und monatliche Abschläge verwalten.",
+        "title": "Monatsabschlag und Buchungen",
+        "description": "Monatsabschläge und Buchungen verwalten.",
         "data": {
           "action": "Aktion",
           "selected": "Buchung auswählen"
         },
         "menu_options": {
-          "billing_bookings": "Buchungen verwalten",
-          "advance_meter": "Monatsabschläge bearbeiten"
+          "advance_change": "Monatsabschlag ändern",
+          "advance_meter": "Monatsabschläge bearbeiten",
+          "billing_bookings": "Buchungen verwalten"
         }
       },
       "database": {
@@ -70,12 +72,12 @@
       },
       "about": {
         "title": "Über VerbrauchsMonitor",
-        "description": "Version 0.0.2 – Dev  \nRevision: {revision}  \nEntwickler: Muschelschubser26 & ChatGPT  \nSupport: [Support@gehtdoch.eu](mailto:Support@gehtdoch.eu)",
+        "description": "Version {version} – {stage}  \nRevision: {revision}  \nEntwickler: Muschelschubser26 & ChatGPT  \nSupport: [Support@gehtdoch.eu](mailto:Support@gehtdoch.eu)",
         "data": {}
       },
       "meter_edit": {
         "title": "Zähler konfigurieren",
-        "description": "Zählerdaten, zugehörigen Vertrag und Messwert-Entitäten festlegen. Der Endzählerstand des letzten Abrechnungszeitraums ist die Berechnungsbasis. Einspeisung und weitere Messwerte sind optional. Eine ausgewählte Entität wird automatisch verwendet; leere optionale Felder werden nicht gespeichert.",
+        "description": "Zählerdaten, zugehörigen Vertrag und Messwert-Entitäten festlegen. Jeder Einspeisungszähler kann mehreren Himmelsrichtungen oder keiner Richtung zugeordnet werden. Neue Einspeisungszähler verwenden standardmäßig Süden. Die Auswahl wird je Zähler gespeichert und in der Einspeisungsprognose berücksichtigt.",
         "data": {
           "name": "Zählername",
           "meter_number": "Zählernummer",
@@ -87,7 +89,8 @@
           "feed_in_power_entity": "Entität für aktuelle Einspeiseleistung (optional)",
           "previous_feed_in_reading": "Zählerstand Abrechnungsbeginn Einspeisung (kWh, Dezimalkomma möglich)",
           "outdoor_illuminance_entity": "Entität Außenhelligkeit (optional)",
-          "feed_in_monthly_advance": "Monatlicher Einspeiseabschlag (Auszahlungsbetrag €)"
+          "feed_in_monthly_advance": "Monatlicher Einspeiseabschlag (Auszahlungsbetrag €)",
+          "feed_in_directions": "Himmelsrichtungen der Einspeisung (Mehrfachauswahl, optional)"
         },
         "submit": "Fertigstellen"
       },
@@ -186,19 +189,16 @@
       },
       "data_management": {
         "title": "Datenverwaltung",
-        "description": "Wähle die Bereiche aus, die zurückgesetzt werden sollen. Vor der Ausführung folgt eine separate Bestätigung. Ein Vertragsreset erfordert auch den Zählerreset.",
-        "data": {
-          "contracts": "Vertrag",
-          "meters": "Zähler zurücksetzen",
-          "billing": "Abrechnungen zurücksetzen",
-          "database": "Datenbank",
-          "forecasts": "Prognose zurücksetzen"
-        },
-        "submit": "Weiter"
+        "description": "Wähle zwischen Reset-Funktionen, Recorder-Entitäten und Datenbankverwaltung.",
+        "menu_options": {
+          "reset_data": "Einzelne Datenbereiche zurücksetzen",
+          "recorder_entities": "Verwendet Recorder – Entitäten",
+          "database": "Datenbankverwaltung"
+        }
       },
       "data_management_confirm": {
         "title": "Zurücksetzen bestätigen",
-        "description": "Ausgewählte Bereiche: {scopes}. Vor dem Zurücksetzen wird die Datenbankdatei als Sicherung erhalten. Bitte bestätige die Aktion ausdrücklich.",
+        "description": "Ausgewählte Bereiche: {scopes}. Vor dem Zurücksetzen werden die bisherigen Periodenreferenzen dauerhaft gesichert. Bei einem Schreibfehler wird der vorherige Zustand wiederhergestellt. Bitte bestätige die Aktion ausdrücklich. Betroffene Periodenwerte: {periods}. Erkannte Abhängigkeiten: {dependencies}.",
         "data": {
           "confirm": "Ich bestätige das Zurücksetzen der ausgewählten Bereiche"
         },
@@ -231,10 +231,15 @@
         "submit": "Zurücksetzen"
       },
       "forecast": {
-        "title": "Prognose konfigurieren",
-        "description": "Prognosen je Zählerstand unabhängig aktivieren. Verbrauch ist standardmäßig aktiviert, Einspeisung deaktiviert. Der Einspeiseabschlag wird im zugehörigen Vertrag gepflegt. Die aktuelle astronomische Jahreszeit wird automatisch anhand des Home-Assistant-Standorts berechnet: {current_season}. Eine Season-Integration oder manuelle Auswahl ist nicht erforderlich.",
+        "title": "Prognose & Zuverlässigkeit konfigurieren",
+        "description": "Prognosen je Zählerstand unabhängig aktivieren. Verbrauch und Einspeisung werden getrennt modelliert. Die astronomische Jahreszeit und Sonnenposition werden lokal anhand des Home-Assistant-Standorts berechnet.\\n\\n---\\n\\nEntitäten für eine höhere Zuverlässigkeit:\\n\\nDie folgenden fünf Wetter- und Umgebungsentitäten sind optional. Je nach Verfügbarkeit und Aktualität werden geeignete Messwerte in die Zuverlässigkeitsbewertung einbezogen. Nicht konfigurierte oder nicht verfügbare Entitäten blockieren die Prognose nicht.",
         "data": {
-          "enabled_forecasts": "Prognosen aktivieren:"
+          "enabled_forecasts": "Prognosen aktivieren:",
+          "outdoor_temperature_entity": "Außentemperatur",
+          "outdoor_illuminance_entity": "Helligkeit (draußen)",
+          "outdoor_wind_direction_entity": "Windrichtung",
+          "daily_precipitation_entity": "Niederschlagsmenge (heute)",
+          "outdoor_humidity_entity": "Luftfeuchtigkeit"
         },
         "submit": "Speichern"
       },
@@ -270,6 +275,95 @@
         "data": {
           "selected_forecasts": "Auszuwählende Prognosen"
         }
+      },
+      "reset_data": {
+        "title": "Einzelne Datenbereiche zurücksetzen",
+        "description": "Wähle die Bereiche aus, die zurückgesetzt werden sollen. Vor der Ausführung folgt eine separate Bestätigung. Ein Vertragsreset erfordert auch den Zählerreset.",
+        "data": {
+          "contracts": "Vertrag zurücksetzen",
+          "meters": "Zähler zurücksetzen",
+          "billing": "Abrechnungen zurücksetzen",
+          "forecasts": "Prognose zurücksetzen",
+          "periods": "Reset der Periodenwerte"
+        },
+        "submit": "Weiter"
+      },
+      "meter_feed_in_directions": {
+        "title": "Himmelsrichtungen der Einspeisung",
+        "description": "Wähle beliebig viele Himmelsrichtungen für diesen Einspeisungszähler oder lasse die Auswahl leer. Neue Einspeisungszähler verwenden standardmäßig Süden.",
+        "data": {
+          "feed_in_directions": "Himmelsrichtungen (optional, Mehrfachauswahl)"
+        },
+        "submit": "Speichern"
+      },
+      "advance_change": {
+        "title": "Stromzähler auswählen",
+        "description": "Wählen Sie den Stromzähler, dessen Monatsabschlag Sie ändern möchten.",
+        "data": {
+          "meter_id": "Stromzähler"
+        }
+      },
+      "advance_change_direction": {
+        "title": "Abrechnungsbereich auswählen",
+        "data": {
+          "direction": "Abrechnungsbereich"
+        }
+      },
+      "advance_change_value": {
+        "title": "Monatsabschlag ändern",
+        "description": "{current_advance}\n{scheduled_advance}\n{save_notice}\n\nWählen Sie einen zukünftigen Monat (frühestens den Folgemonat) und geben Sie den neuen Betrag ein. Der neue Betrag gilt ab diesem Monat bis zum Ende des Abrechnungszeitraums. Der aktuelle Monat kann nicht geändert werden.",
+        "data": {
+          "effective_month": "Neuer Abschlag ab",
+          "amount": "Neuer Abschlag (€)"
+        }
+      },
+      "recorder_entities": {
+        "title": "Verwendet Recorder – Entitäten",
+        "description": "Wähle das gewünschte YAML-Format.",
+        "menu_options": {
+          "recorder_entities_plain": "Entitäten für recorder.yaml",
+          "recorder_entities_include": "Entitäten für Dateiname.yaml (include)"
+        }
+      },
+      "recorder_entities_plain": {
+        "title": "Entitäten für recorder.yaml",
+        "description": "Entitäten ohne führende Einrückung. Inhalt markieren und kopieren.",
+        "data": {
+          "entities": "Recorder-Entitäten"
+        }
+      },
+      "recorder_entities_include": {
+        "title": "Entitäten für Dateiname.yaml",
+        "description": "Entitäten mit zwei Leerzeichen Einrückung für include. Inhalt markieren und kopieren.",
+        "data": {
+          "entities": "Recorder-Entitäten"
+        }
+      },
+      "settlement": {
+        "title": "Abrechnung",
+        "menu_options": {
+          "settlement_create": "Abrechnung erstellen",
+          "settlement_view": "Abrechnung aufrufen"
+        }
+      },
+      "settlement_create": {
+        "title": "Abrechnung erstellen",
+        "description": "Der Ablauf zum Erstellen einer Abrechnung wird hier geöffnet.",
+        "data": {},
+        "submit": "OK"
+      },
+      "settlement_view": {
+        "title": "Abrechnung aufrufen",
+        "description": "Die Übersicht vorhandener Abrechnungen wird hier geöffnet.",
+        "data": {},
+        "submit": "OK"
+      },
+      "period_reset_select": {
+        "title": "Periodenwerte zurücksetzen",
+        "description": "Wähle die gewünschten Zähler und Energierichtungen aus. Für jede Auswahl werden Tag, Woche, Monat und Jahr gemeinsam auf denselben aktuellen Quellzählerstand gesetzt. Historische Abrechnungs- und Zählerwechseldaten bleiben erhalten.",
+        "data": {
+          "selected_periods": "Zurückzusetzende Zähler und Bereiche"
+        }
       }
     },
     "error": {
@@ -294,7 +388,10 @@
       "duplicate_billing_type": "Verbrauch und Einspeisung dürfen nicht doppelt ausgewählt werden.",
       "invalid_billing_period": "Bitte einen gültigen Beginn und eine Laufzeit von mindestens einem Monat eingeben.",
       "invalid_advance_amount": "Bitte geben Sie für jeden Monat einen gültigen nicht negativen Betrag ein.",
-      "save_failed": "Die Buchung konnte nicht gespeichert werden. Bitte Protokoll und Datenbankstatus prüfen."
+      "save_failed": "Die Buchung konnte nicht gespeichert werden. Bitte Protokoll und Datenbankstatus prüfen.",
+      "reset_no_period_sources": "Keine geeigneten Zähler mit Messwertquelle konfiguriert.",
+      "reset_period_source_unavailable": "Mindestens ein ausgewählter Zählerstand ist nicht verfügbar. Es wurde nichts zurückgesetzt.",
+      "reset_period_write_failed": "Periodenreset fehlgeschlagen. Die vorherigen Referenzwerte wurden aus der Sicherung wiederhergestellt, soweit ein Schreibvorgang bereits erfolgt war."
     },
     "abort": {
       "missing_billing_start": "Für den ausgewählten Stromzähler ist kein Abrechnungsbeginn hinterlegt.",

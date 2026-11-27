@@ -18,8 +18,9 @@
         "menu_options": {
           "contracts": "Contracts",
           "meters": "Meters",
-          "forecast": "Forecast",
-          "billing": "Bills and advances",
+          "forecast": "Forecast & Reliability",
+          "settlement": "Billing",
+          "billing": "Monthly advances & bookings",
           "data_management": "Data management",
           "about": "About"
         }
@@ -49,15 +50,16 @@
         "submit": "Next"
       },
       "billing": {
-        "title": "Bills and advances",
-        "description": "Manage billing records and monthly advances.",
+        "title": "Monthly advances & bookings",
+        "description": "Manage monthly advances and bookings.",
         "data": {
           "action": "Action",
           "selected": "Select booking"
         },
         "menu_options": {
-          "billing_bookings": "Manage bookings",
-          "advance_meter": "Edit monthly advances"
+          "advance_change": "Change monthly advance",
+          "advance_meter": "Edit monthly advances",
+          "billing_bookings": "Manage bookings"
         }
       },
       "database": {
@@ -70,12 +72,12 @@
       },
       "about": {
         "title": "About VerbrauchsMonitor",
-        "description": "Version 0.0.2 – Dev  \nRevision: {revision}  \nDeveloper: Muschelschubser26 & ChatGPT  \nSupport: [Support@gehtdoch.eu](mailto:Support@gehtdoch.eu)",
+        "description": "Version {version} – {stage}  \nRevision: {revision}  \nDeveloper: Muschelschubser26 & ChatGPT  \nSupport: [Support@gehtdoch.eu](mailto:Support@gehtdoch.eu)",
         "data": {}
       },
       "meter_edit": {
         "title": "Configure meter",
-        "description": "Configure meter data, its contract and measurement entities. The final reading of the previous billing period is the calculation basis. Feed-in and other measurements are optional. Selected entities are used automatically; empty optional fields are not stored.",
+        "description": "Set meter data, its contract, and measurement entities. Each feed-in meter may be assigned multiple compass directions or no direction. New feed-in meters default to south. The selection is stored per meter and used by the feed-in forecast.",
         "data": {
           "name": "Meter name",
           "meter_number": "Meter number",
@@ -87,7 +89,8 @@
           "feed_in_power_entity": "Current feed-in power entity (optional)",
           "previous_feed_in_reading": "Feed-in meter reading at billing start (kWh, decimal comma supported)",
           "outdoor_illuminance_entity": "Outdoor illuminance entity (optional)",
-          "feed_in_monthly_advance": "Monthly feed-in advance (actual payout €)"
+          "feed_in_monthly_advance": "Monthly feed-in advance (actual payout €)",
+          "feed_in_directions": "Feed-in compass directions (multiple selection, optional)"
         },
         "submit": "Finish"
       },
@@ -186,19 +189,16 @@
       },
       "data_management": {
         "title": "Data management",
-        "description": "Select the scopes to reset. A separate confirmation follows. Resetting contracts also requires resetting meters.",
-        "data": {
-          "contracts": "Contract",
-          "meters": "Reset meters",
-          "billing": "Reset billing",
-          "database": "Database",
-          "forecasts": "Reset forecasts"
-        },
-        "submit": "Continue"
+        "description": "Choose between reset functions, Recorder entities and database administration.",
+        "menu_options": {
+          "reset_data": "Reset individual data areas",
+          "recorder_entities": "Recorder entities used",
+          "database": "Database administration"
+        }
       },
       "data_management_confirm": {
         "title": "Confirm reset",
-        "description": "Selected scopes: {scopes}. The database file is backed up before reset. Explicitly confirm the action.",
+        "description": "Selected scopes: {scopes}. The database file is backed up before reset. Explicitly confirm the action. Affected period values: {periods}. Detected dependencies: {dependencies}.",
         "data": {
           "confirm": "I confirm resetting the selected scopes"
         },
@@ -231,10 +231,15 @@
         "submit": "Reset"
       },
       "forecast": {
-        "title": "Configure forecasts",
-        "description": "Enable forecasts independently for each meter reading. Consumption is enabled by default and feed-in is disabled. The feed-in advance is configured in the associated contract. The current astronomical season is calculated automatically from the Home Assistant location: {current_season}. No Season integration or manual selection is required.",
+        "title": "Configure Forecast & Reliability",
+        "description": "Enable forecasts independently for each meter reading. Consumption and feed-in are modelled separately. The astronomical season and solar position are calculated locally from the Home Assistant location.\\n\\n---\\n\\nEntities for higher reliability:\\n\\nThe following five weather and environmental entities are optional. Suitable readings are included in reliability assessment according to availability and freshness. Missing or unavailable entities never block forecasts.",
         "data": {
-          "enabled_forecasts": "Enable forecasts:"
+          "enabled_forecasts": "Enable forecasts:",
+          "outdoor_temperature_entity": "Outdoor temperature",
+          "outdoor_illuminance_entity": "Outdoor brightness",
+          "outdoor_wind_direction_entity": "Wind direction",
+          "daily_precipitation_entity": "Precipitation (today)",
+          "outdoor_humidity_entity": "Humidity"
         },
         "submit": "Save"
       },
@@ -270,6 +275,95 @@
         "data": {
           "selected_forecasts": "Forecasts to reset"
         }
+      },
+      "reset_data": {
+        "title": "Reset individual data areas",
+        "description": "Choose between individual reset functions and database administration.",
+        "data": {
+          "contracts": "Reset contracts",
+          "meters": "Reset meters",
+          "billing": "Reset billing",
+          "forecasts": "Reset forecasts",
+          "periods": "Reset period values"
+        },
+        "submit": "Next"
+      },
+      "meter_feed_in_directions": {
+        "title": "Feed-in compass directions",
+        "description": "Choose any combination of compass directions for this feed-in meter, or leave the selection empty. New feed-in meters default to south.",
+        "data": {
+          "feed_in_directions": "Compass directions (optional, multiple selection)"
+        },
+        "submit": "Save"
+      },
+      "advance_change": {
+        "title": "Select electricity meter",
+        "description": "Select the electricity meter whose monthly advance you want to change.",
+        "data": {
+          "meter_id": "Electricity meter"
+        }
+      },
+      "advance_change_direction": {
+        "title": "Select billing area",
+        "data": {
+          "direction": "Billing area"
+        }
+      },
+      "advance_change_value": {
+        "title": "Change monthly advance",
+        "description": "{current_advance}\n{scheduled_advance}\n{save_notice}\n\nSelect a future month (no earlier than next month) and enter the new amount. The new amount applies from that month until the end of the billing period. The current month cannot be changed.",
+        "data": {
+          "effective_month": "New advance from",
+          "amount": "New monthly advance (€)"
+        }
+      },
+      "recorder_entities": {
+        "title": "Recorder entities used",
+        "description": "Choose the required YAML format.",
+        "menu_options": {
+          "recorder_entities_plain": "Entities for recorder.yaml",
+          "recorder_entities_include": "Entities for filename.yaml (include)"
+        }
+      },
+      "recorder_entities_plain": {
+        "title": "Entities for recorder.yaml",
+        "description": "Entities without leading indentation. Select and copy the content.",
+        "data": {
+          "entities": "Recorder entities"
+        }
+      },
+      "recorder_entities_include": {
+        "title": "Entities for filename.yaml",
+        "description": "Entities indented by two spaces for include. Select and copy the content.",
+        "data": {
+          "entities": "Recorder entities"
+        }
+      },
+      "settlement": {
+        "title": "Billing",
+        "menu_options": {
+          "settlement_create": "Create bill",
+          "settlement_view": "View bills"
+        }
+      },
+      "settlement_create": {
+        "title": "Create bill",
+        "description": "The bill creation workflow opens here.",
+        "data": {},
+        "submit": "OK"
+      },
+      "settlement_view": {
+        "title": "View bills",
+        "description": "The overview of existing bills opens here.",
+        "data": {},
+        "submit": "OK"
+      },
+      "period_reset_select": {
+        "title": "Reset period values",
+        "description": "Select the required meters and energy directions. For each selection, day, week, month and year are reset together to the same current source-meter reading. Historical billing and meter-change records are preserved.",
+        "data": {
+          "selected_periods": "Meters and directions to reset"
+        }
       }
     },
     "error": {
@@ -294,7 +388,10 @@
       "duplicate_billing_type": "Consumption and feed-in cannot be selected twice.",
       "invalid_billing_period": "Enter a valid start date and a duration of at least one month.",
       "invalid_advance_amount": "Enter a valid non-negative amount for each month.",
-      "save_failed": "The booking could not be saved. Please check the system log and database status."
+      "save_failed": "The booking could not be saved. Please check the system log and database status.",
+      "reset_no_period_sources": "No eligible meters with configured source entities.",
+      "reset_period_source_unavailable": "At least one selected meter reading is unavailable. Nothing was reset.",
+      "reset_period_write_failed": "Period reset failed. Previous baselines were restored from the backup where a write had already occurred."
     },
     "abort": {
       "missing_billing_start": "No billing period start is configured for the selected meter.",

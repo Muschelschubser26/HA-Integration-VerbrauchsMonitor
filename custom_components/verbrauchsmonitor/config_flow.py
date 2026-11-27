@@ -7,8 +7,15 @@ from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.core import callback
+from homeassistant.helpers.storage import Store
+from homeassistant.util import dt as dt_util
 from homeassistant.helpers import selector
-from .const import DOMAIN
+from .const import (
+    DOMAIN, RELEASE_VERSION, RELEASE_STAGE, RELEASE_REVISION,
+    CONF_OUTDOOR_ILLUMINANCE_ENTITY, CONF_OUTDOOR_TEMPERATURE_ENTITY,
+    CONF_OUTDOOR_WIND_DIRECTION_ENTITY, CONF_DAILY_PRECIPITATION_ENTITY,
+    CONF_OUTDOOR_HUMIDITY_ENTITY,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -21,6 +28,29 @@ def format_amount_de(value):
         amount = Decimal("0.00")
     return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
+
+
+def _feed_in_monthly_advance_net(contract: dict) -> Decimal:
+    """Return the canonical net feed-in advance with safe legacy fallback.
+
+    Older feed-in-only contracts stored their payout advance in the generic
+    ``monthly_advance`` field. That fallback is valid only when the contract
+    has no consumption billing area; otherwise it could mix two directions.
+    """
+    value = contract.get("feed_in_monthly_advance")
+    if value in (None, ""):
+        if (
+            contract.get("primary_billing_type") == "feed_in"
+            and contract.get("secondary_billing_type") != "consumption"
+        ):
+            value = contract.get("monthly_advance", 0)
+        else:
+            value = 0
+    try:
+        amount = Decimal(str(value or 0))
+        return amount if amount.is_finite() and amount >= 0 else Decimal(0)
+    except (InvalidOperation, ValueError, TypeError):
+        return Decimal(0)
 
 def format_tariff_de(value):
     """Format monetary tariff inputs to cents with a German decimal comma."""
@@ -144,6 +174,9 @@ def _apply_optional_entities(item, old, user_input):
         item.pop("feed_in_entity", None)
         item.pop("feed_in_power_entity", None)
         item.pop("previous_feed_in_reading", None)
+        item.pop("feed_in_orientation", None)
+        item.pop("feed_in_directions", None)
+        item.pop("compass_directions", None)
     return item
 
 def _month_field_label(month: str, hass) -> str:
@@ -189,7 +222,7 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
     """Grouped central administration for contracts, meters, billing and database."""
     async def async_step_init(self, user_input=None):
         """Show and process the initial contract and meter management menu."""
-        return self.async_show_menu(step_id="init", menu_options=["contracts", "meters", "forecast", "billing", "data_management", "about"])
+        return self.async_show_menu(step_id="init", menu_options=["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"])
 
     async def _save(self, **changes):
         """Persist the complete options payload through the OptionsFlow result.
@@ -613,9 +646,69 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
                 if value not in (None, "")
                 or key in ("previous_consumption_reading", "previous_feed_in_reading")
             }
+            if item.get("feed_in_entity"):
+                # A feed-in meter may use any combination of compass directions,
+                # or no explicit direction. New meters default to south; an
+                # explicitly empty selection remains empty and is preserved.
+                raw_directions = user_input.get("feed_in_directions", None)
+                if raw_directions is None and "feed_in_directions" in old:
+                    raw_directions = old.get("feed_in_directions")
+                if raw_directions is None and "compass_directions" in old:
+                    raw_directions = old.get("compass_directions")
+                if raw_directions is None and old.get("feed_in_orientation") in ("north", "east", "south", "west"):
+                    raw_directions = [old["feed_in_orientation"]]
+                if raw_directions is None:
+                    # The first meter form cannot show this field until the
+                    # optional feed-in entity has been selected. Ask for the
+                    # per-meter directions in a follow-up step, defaulting south.
+                    self._meter_pending_item = item
+                    return await self.async_step_meter_feed_in_directions()
+                if isinstance(raw_directions, str):
+                    raw_directions = [raw_directions]
+                item["feed_in_directions"] = list(dict.fromkeys(
+                    direction for direction in (raw_directions or [])
+                    if direction in ("north", "east", "south", "west")
+                ))
+                item.pop("feed_in_orientation", None)
+                item.pop("compass_directions", None)
             meters = [meter for meter in meters if meter.get("id") != meter_id] + [item]
             return await self._save(meters=meters)
         return self.async_show_form(step_id="meter_edit", data_schema=self._meter_edit_schema(contracts, old))
+
+    async def async_step_meter_feed_in_directions(self, user_input=None):
+        """Choose zero or more compass directions for this feed-in meter."""
+        if user_input is not None:
+            raw = user_input.get("feed_in_directions", [])
+            if isinstance(raw, str):
+                raw = [raw]
+            item = dict(self._meter_pending_item)
+            item["feed_in_directions"] = list(dict.fromkeys(
+                direction for direction in (raw or [])
+                if direction in ("north", "east", "south", "west")
+            ))
+            item.pop("feed_in_orientation", None)
+            item.pop("compass_directions", None)
+            meters = list(self.config_entry.options.get("meters", []))
+            meter_id = str(item.get("id"))
+            meters = [meter for meter in meters if str(meter.get("id")) != meter_id] + [item]
+            return await self._save(meters=meters)
+        return self.async_show_form(
+            step_id="meter_feed_in_directions",
+            data_schema=vol.Schema({
+                vol.Optional("feed_in_directions", default=["south"]): selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": "north", "label": self._labels("Norden", "North")},
+                            {"value": "east", "label": self._labels("Osten", "East")},
+                            {"value": "south", "label": self._labels("Süden", "South")},
+                            {"value": "west", "label": self._labels("Westen", "West")},
+                        ],
+                        mode=selector.SelectSelectorMode.LIST,
+                        multiple=True,
+                    )
+                )
+            }),
+        )
 
     def _meter_edit_schema(self, contracts, data=None):
         """Build the input schema for creating or editing a logical meter."""
@@ -637,6 +730,31 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
                 fields[vol.Optional(key)] = _entity()
         if data.get("feed_in_entity"):
             fields[vol.Optional("previous_feed_in_reading", default=str(data.get("previous_feed_in_reading", 0)).replace(".", ","))] = selector.TextSelector(selector.TextSelectorConfig())
+            legacy_directions = data.get("feed_in_directions")
+            if legacy_directions is None:
+                legacy_directions = data.get("compass_directions")
+            if isinstance(legacy_directions, str):
+                legacy_directions = [legacy_directions]
+            if legacy_directions is None:
+                legacy_single = data.get("feed_in_orientation")
+                legacy_directions = [legacy_single] if legacy_single in ("north", "east", "south", "west") else ["south"]
+            selected_directions = [
+                direction for direction in (legacy_directions or [])
+                if direction in ("north", "east", "south", "west")
+            ]
+            orientation_options = [
+                {"value": "north", "label": self._labels("Norden", "North")},
+                {"value": "east", "label": self._labels("Osten", "East")},
+                {"value": "south", "label": self._labels("Süden", "South")},
+                {"value": "west", "label": self._labels("Westen", "West")},
+            ]
+            fields[vol.Optional("feed_in_directions", default=selected_directions)] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=orientation_options,
+                    mode=selector.SelectSelectorMode.LIST,
+                    multiple=True,
+                )
+            )
         else:
             fields[vol.Optional("previous_feed_in_reading", default="0")] = selector.TextSelector(selector.TextSelectorConfig())
         return vol.Schema(fields)
@@ -648,7 +766,7 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
         return current_ha_season(self.hass, dt_util.now())
 
     async def async_step_forecast(self, user_input=None):
-        """Configure enabled forecasts; season selection is fully automatic."""
+        """Configure enabled forecasts; feed-in orientation belongs to each meter."""
         meters = [dict(m) for m in self.config_entry.options.get("meters", [])]
         if not meters:
             return self.async_abort(reason="no_meters")
@@ -660,6 +778,8 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
             options.append({"value": consumption, "label": f"{meter.get('name', 'Stromzähler')} {self._labels('– Verbrauch', '– Consumption')}"})
             if meter.get("forecast_consumption_enabled", True):
                 defaults.append(consumption)
+            # A feed-in forecast remains available even when no compass
+            # direction is assigned; the model then uses a neutral all-directions prior.
             if meter.get("feed_in_entity"):
                 feed_in = f"{mid}|feed_in"
                 options.append({"value": feed_in, "label": f"{meter.get('name', 'Stromzähler')} {self._labels('– Einspeisung', '– Feed-in')}"})
@@ -670,15 +790,62 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
             for meter in meters:
                 mid = str(meter.get("id"))
                 meter["forecast_consumption_enabled"] = f"{mid}|consumption" in enabled
-                meter["forecast_feed_in_enabled"] = bool(meter.get("feed_in_entity") and f"{mid}|feed_in" in enabled)
+                meter["forecast_feed_in_enabled"] = bool(
+                    meter.get("feed_in_entity") and f"{mid}|feed_in" in enabled
+                )
+                # Normalize legacy scalar and global list settings to the
+                # per-meter multi-select field without forcing a selection.
+                legacy = meter.get("feed_in_directions")
+                if legacy is None:
+                    legacy = meter.get("compass_directions")
+                if legacy is None:
+                    scalar = meter.get("feed_in_orientation")
+                    legacy = [scalar] if scalar in ("north", "east", "south", "west") else ["south"]
+                if isinstance(legacy, str):
+                    legacy = [legacy]
+                meter["feed_in_directions"] = list(dict.fromkeys(
+                    value for value in (legacy or [])
+                    if value in ("north", "east", "south", "west")
+                ))
+                meter.pop("feed_in_orientation", None)
+                meter.pop("compass_directions", None)
             options_update = dict(self.config_entry.options)
             options_update["meters"] = meters
+            for key in (
+                CONF_OUTDOOR_TEMPERATURE_ENTITY,
+                CONF_OUTDOOR_ILLUMINANCE_ENTITY,
+                CONF_OUTDOOR_WIND_DIRECTION_ENTITY,
+                CONF_DAILY_PRECIPITATION_ENTITY,
+                CONF_OUTDOOR_HUMIDITY_ENTITY,
+            ):
+                value = user_input.get(key)
+                if value:
+                    options_update[key] = value
+                else:
+                    options_update.pop(key, None)
             return self.async_create_entry(title="", data=options_update)
         fields = {
             vol.Optional("enabled_forecasts", default=defaults): selector.SelectSelector(
                 selector.SelectSelectorConfig(options=options, mode=selector.SelectSelectorMode.LIST, multiple=True)
             )
         }
+        # Optional environmental entities improve context quality when present.
+        # They are stored in config-entry options and never required for forecasts.
+        for key in (
+            CONF_OUTDOOR_TEMPERATURE_ENTITY,
+            CONF_OUTDOOR_ILLUMINANCE_ENTITY,
+            CONF_OUTDOOR_WIND_DIRECTION_ENTITY,
+            CONF_DAILY_PRECIPITATION_ENTITY,
+            CONF_OUTDOOR_HUMIDITY_ENTITY,
+        ):
+            current_entity = self.config_entry.options.get(key)
+            entity_key = (
+                vol.Optional(key, default=current_entity)
+                if current_entity else vol.Optional(key)
+            )
+            fields[entity_key] = selector.EntitySelector(
+                selector.EntitySelectorConfig(domain="sensor")
+            )
         season = self._current_season()
         season_labels = {"spring": ("Frühling", "Spring"), "summer": ("Sommer", "Summer"),
                          "autumn": ("Herbst", "Autumn"), "winter": ("Winter", "Winter")}
@@ -687,9 +854,191 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
             "current_season": self._labels(de, en)
         })
 
+    async def async_step_settlement(self, user_input=None):
+        """Show the separate billing area and route directly to its next dialog."""
+        return self.async_show_menu(step_id="settlement", menu_options=["settlement_create", "settlement_view"])
+
+    async def async_step_settlement_create(self, user_input=None):
+        """Open the bill-creation destination dialog.
+
+        The actual calculation and persistence workflow is intentionally not
+        fabricated here; this dialog establishes the agreed navigation entry.
+        """
+        if user_input is not None:
+            return await self.async_step_init()
+        return self.async_show_form(step_id="settlement_create", data_schema=vol.Schema({}))
+
+    async def async_step_settlement_view(self, user_input=None):
+        """Open the existing-bills destination dialog."""
+        if user_input is not None:
+            return await self.async_step_init()
+        return self.async_show_form(step_id="settlement_view", data_schema=vol.Schema({}))
+
     async def async_step_billing(self, user_input=None):
-        """Offer billing records and per-meter monthly advance management."""
-        return self.async_show_menu(step_id="billing", menu_options=["billing_bookings", "advance_meter"])
+        """Offer monthly advances and booking management."""
+        return self.async_show_menu(step_id="billing", menu_options=["advance_change", "advance_meter", "billing_bookings"])
+
+    async def async_step_advance_change(self, user_input=None):
+        """Select the meter for changing one monthly advance from a future month."""
+        meters = list(self.config_entry.options.get("meters", []))
+        if not meters:
+            return self.async_abort(reason="no_meters")
+        if user_input is not None:
+            self._change_advance_meter_id = user_input["meter_id"]
+            meter = next(m for m in meters if str(m.get("id")) == self._change_advance_meter_id)
+            directions = [{"value": "consumption", "label": self._labels("Verbrauch", "Consumption")}]
+            if meter.get("feed_in_entity"):
+                directions.append({"value": "feed_in", "label": self._labels("Einspeisung", "Feed-in")})
+            if len(directions) == 1:
+                self._change_advance_direction = directions[0]["value"]
+                return await self.async_step_advance_change_value()
+            return self.async_show_form(step_id="advance_change_direction", data_schema=vol.Schema({
+                vol.Required("direction"): _select(directions)
+            }))
+        return self.async_show_form(step_id="advance_change", data_schema=vol.Schema({
+            vol.Required("meter_id"): _select([{"value": str(m.get("id")), "label": m.get("name", self._labels("Stromzähler", "Electricity meter"))} for m in meters])
+        }))
+
+    async def async_step_advance_change_direction(self, user_input=None):
+        """Select consumption or feed-in for the advance change."""
+        if user_input is not None:
+            self._change_advance_direction = user_input["direction"]
+            return await self.async_step_advance_change_value()
+        meter = next(m for m in self.config_entry.options.get("meters", []) if str(m.get("id")) == self._change_advance_meter_id)
+        options = [{"value": "consumption", "label": self._labels("Verbrauch", "Consumption")}]
+        if meter.get("feed_in_entity"):
+            options.append({"value": "feed_in", "label": self._labels("Einspeisung", "Feed-in")})
+        return self.async_show_form(step_id="advance_change_direction", data_schema=vol.Schema({vol.Required("direction"): _select(options)}))
+
+    async def async_step_advance_change_value(self, user_input=None):
+        """Set a new amount effective from the selected future month onward."""
+        from datetime import date
+        from .database import load_data, get_monthly_advance, record_monthly_advances, next_distinct_monthly_advance
+        meter = next(m for m in self.config_entry.options.get("meters", []) if str(m.get("id")) == self._change_advance_meter_id)
+        contract = next(c for c in self.config_entry.options.get("contracts", []) if c.get("id") == meter.get("contract_id"))
+        start_text = contract.get("billing_period_start") or contract.get("billing_start") or contract.get("contract_start")
+        if not start_text:
+            return self.async_abort(reason="missing_billing_start")
+        start = date.fromisoformat(str(start_text)[:10])
+        duration = max(1, int(contract.get("billing_period_months", 12) or 12))
+        start_index = start.year * 12 + start.month - 1
+        from homeassistant.util import dt as dt_util
+        today = dt_util.now().date()
+        next_index = today.year * 12 + today.month
+        next_month = date(next_index // 12, next_index % 12 + 1, 1)
+        choices = []
+        cursor = next_month
+        # The current month is deliberately excluded. Offer the next seven
+        # calendar months even when this crosses a billing-period boundary.
+        while len(choices) < 7:
+            key = cursor.strftime("%Y-%m")
+            german_months = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember")
+            english_months = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+            is_german = str(self.hass.config.language).lower().startswith("de")
+            month_name = german_months[cursor.month - 1] if is_german else english_months[cursor.month - 1]
+            choices.append({"value": key, "label": f"{month_name} {cursor.year}"})
+            cursor = date(cursor.year + (cursor.month == 12), 1 if cursor.month == 12 else cursor.month + 1, 1)
+        if not choices:
+            return self.async_abort(reason="no_future_billing_month")
+        ledger = await self.hass.async_add_executor_job(load_data, self.hass)
+        direction = self._change_advance_direction
+        if direction == "consumption":
+            from .pricing import gross_from_net
+            default = gross_from_net(contract.get("monthly_advance", 0), contract.get("vat_rate", 19))
+        else:
+            from .pricing import gross_from_net
+            default = gross_from_net(_feed_in_monthly_advance_net(contract), contract.get("vat_rate", 19))
+        current_key = today.strftime("%Y-%m")
+        current_amount = get_monthly_advance(ledger, meter_id=self._change_advance_meter_id, direction=direction, month=current_key, default=default)
+        active_changes = [
+            x for x in ledger.get("monthly_advances", [])
+            if x.get("meter_id") == self._change_advance_meter_id
+            and x.get("direction") == direction
+            and x.get("source") == "manual"
+            and not x.get("superseded")
+        ]
+        current_changes = [x for x in active_changes if x.get("month", "") <= current_key]
+        latest_change = max(current_changes, key=lambda x: x.get("month", ""), default=None)
+        current_label = self._labels(
+            f"Aktueller Abschlag: {format_amount_de(current_amount)} €",
+            f"Current monthly advance: {format_amount_de(current_amount)} €",
+        )
+        if latest_change:
+            effective = date.fromisoformat(latest_change["month"] + "-01").strftime("%B %Y")
+            current_label = self._labels(
+                f"Aktueller Abschlag (seit {effective}): {format_amount_de(current_amount)} €",
+                f"Current monthly advance (since {effective}): {format_amount_de(current_amount)} €",
+            )
+        # Monthly overrides are stored month by month through the billing
+        # period. Only show the next real amount transition; once it becomes
+        # the current amount, identical continuation rows are suppressed.
+        next_change = next_distinct_monthly_advance(
+            active_changes,
+            meter_id=self._change_advance_meter_id,
+            direction=direction,
+            after_month=current_key,
+            current_amount=current_amount,
+        )
+        scheduled_label = self._labels("", "")
+        if next_change is not None:
+            effective_date = date.fromisoformat(next_change["month"] + "-01")
+            german_months = ("Januar", "Februar", "März", "April", "Mai", "Juni", "Juli", "August", "September", "Oktober", "November", "Dezember")
+            english_months = ("January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December")
+            month_name_de = f"{german_months[effective_date.month - 1]} {effective_date.year}"
+            month_name_en = f"{english_months[effective_date.month - 1]} {effective_date.year}"
+            scheduled_label = self._labels(
+                f"Bereits vorgemerkter Abschlag: Ab {month_name_de}: {format_amount_de(next_change.get('amount', 0))} €",
+                f"Advance already scheduled: From {month_name_en}: {format_amount_de(next_change.get('amount', 0))} €",
+            )
+        save_notice = getattr(self, "_advance_change_notice", "")
+        if hasattr(self, "_advance_change_notice"):
+            del self._advance_change_notice
+        if user_input is not None:
+            try:
+                amount = _parse_localized_amount(user_input["amount"])
+                if amount < 0:
+                    raise InvalidOperation
+                selected = date.fromisoformat(user_input["effective_month"] + "-01")
+                allowed_months = {choice["value"] for choice in choices}
+                if selected.strftime("%Y-%m") not in allowed_months or selected <= date(today.year, today.month, 1):
+                    raise ValueError("effective_month_must_be_future")
+                # Resolve the billing period containing the selected month.
+                # A new period starts every configured duration, anchored to
+                # the contract's original billing-period start month.
+                selected_index = selected.year * 12 + selected.month - 1
+                period_number = max(0, (selected_index - start_index) // duration)
+                period_end_index = start_index + (period_number + 1) * duration - 1
+                values = {}
+                cursor = selected
+                while cursor.year * 12 + cursor.month - 1 <= period_end_index:
+                    values[cursor.strftime("%Y-%m")] = amount
+                    cursor = date(cursor.year + (cursor.month == 12), 1 if cursor.month == 12 else cursor.month + 1, 1)
+                await self.hass.async_add_executor_job(partial(record_monthly_advances, self.hass, meter_id=self._change_advance_meter_id, direction=direction, contract_id=str(meter.get("contract_id")), amounts=values))
+            except (InvalidOperation, ValueError, TypeError, KeyError):
+                return self.async_show_form(
+                    step_id="advance_change_value",
+                    data_schema=self._advance_change_schema(choices, current_label),
+                    errors={"base": "invalid_advance_amount"},
+                    description_placeholders={"current_advance": current_label, "scheduled_advance": scheduled_label, "save_notice": save_notice},
+                )
+            self._advance_change_notice = self._labels(
+                "Abschlagsänderung wurde gespeichert.",
+                "Monthly advance change was saved.",
+            )
+            await self.hass.config_entries.async_reload(self.config_entry.entry_id)
+            return await self.async_step_advance_change_value()
+        return self.async_show_form(
+            step_id="advance_change_value",
+            data_schema=self._advance_change_schema(choices, current_label),
+            description_placeholders={"current_advance": current_label, "scheduled_advance": scheduled_label, "save_notice": save_notice},
+        )
+
+    def _advance_change_schema(self, choices, current_label):
+        """Build the effective-month and new-amount form."""
+        return vol.Schema({
+            vol.Required("effective_month", default=choices[0]["value"]): _select(choices),
+            vol.Required("amount"): selector.TextSelector(selector.TextSelectorConfig()),
+        })
 
     async def async_step_advance_meter(self, user_input=None):
         """Select the logical meter whose monthly advances are to be edited."""
@@ -724,7 +1073,10 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
     async def async_step_advance_months(self, user_input=None):
         """Show and save monthly advance values for the selected meter and direction."""
         from datetime import date
-        from .database import load_data, get_monthly_advance, record_monthly_advance
+        from .database import (
+            load_data, get_monthly_advance, record_monthly_advances,
+            migrate_legacy_zero_feed_in_advances,
+        )
         meter = next(m for m in self.config_entry.options.get("meters", []) if str(m.get("id")) == self._advance_meter_id)
         contract = next(c for c in self.config_entry.options.get("contracts", []) if c.get("id") == meter.get("contract_id"))
         start_text = contract.get("billing_period_start") or contract.get("billing_start") or contract.get("contract_start")
@@ -744,16 +1096,44 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
         if not months:
             return self.async_abort(reason="no_current_billing_month")
         ledger = await self.hass.async_add_executor_job(load_data, self.hass)
+        if self._advance_direction == "feed_in":
+            # Contract amounts are stored net; the editor and monthly ledger use
+            # the actual gross payout, exactly like the consumption editor. R131
+            # repairs the legacy zero overrides created by the old feed-in form.
+            from .pricing import gross_from_net
+            feed_in_net = _feed_in_monthly_advance_net(contract)
+            contract_default_gross = gross_from_net(
+                feed_in_net, contract.get("vat_rate", 19)
+            )
+            migration_result = await self.hass.async_add_executor_job(
+                partial(
+                    migrate_legacy_zero_feed_in_advances, self.hass,
+                    meter_id=self._advance_meter_id,
+                    contract_id=str(meter.get("contract_id")),
+                    default_gross_amount=contract_default_gross,
+                )
+            )
+            if migration_result.get("migrated"):
+                _LOGGER.warning(
+                    "VerbrauchsMonitor: %s fehlerhafte historische Einspeisungs-Abschläge "
+                    "auf den vertraglichen Bruttobetrag zurückgeführt (Zähler %s)",
+                    migration_result["migrated"], self._advance_meter_id,
+                )
+                ledger = await self.hass.async_add_executor_job(load_data, self.hass)
         if user_input is not None:
             try:
+                # Parse and validate the complete form before making any write.
+                # A single database transaction prevents partial month updates.
+                amounts = {}
                 for month in months:
                     field_label = _month_field_label(month, self.hass)
                     amount = _parse_localized_amount(user_input[field_label])
                     if amount < 0:
                         raise InvalidOperation
-                    await self.hass.async_add_executor_job(partial(record_monthly_advance, self.hass,
-                        meter_id=self._advance_meter_id, direction=self._advance_direction,
-                        contract_id=str(meter.get("contract_id")), month=month, amount=amount))
+                    amounts[month] = amount
+                await self.hass.async_add_executor_job(partial(record_monthly_advances, self.hass,
+                    meter_id=self._advance_meter_id, direction=self._advance_direction,
+                    contract_id=str(meter.get("contract_id")), amounts=amounts))
             except (InvalidOperation, ValueError, TypeError, KeyError):
                 return self.async_show_form(step_id="advance_months", data_schema=self._advance_month_schema(months, ledger), errors={"base": "invalid_advance_amount"})
             await self.hass.config_entries.async_reload(self.config_entry.entry_id)
@@ -769,7 +1149,14 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
             from .pricing import gross_from_net
             default = gross_from_net(contract.get("monthly_advance", 0), contract.get("vat_rate", 19))
         else:
-            default = meter.get("feed_in_monthly_advance", 0)
+            # Feed-in monthly advances are stored net on the contract. The
+            # monthly editor works with the actual payout amount (gross), just
+            # like the consumption editor.
+            from .pricing import gross_from_net
+            default = gross_from_net(
+                _feed_in_monthly_advance_net(contract),
+                contract.get("vat_rate", 19),
+            )
         fields = {}
         for month in months:
             value = get_monthly_advance(ledger, meter_id=self._advance_meter_id, direction=self._advance_direction, month=month, default=default)
@@ -879,8 +1266,9 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
 
     async def async_step_database(self, user_input=None):
         """Show database information and offer explicit database actions."""
-        from .database import status
-        details = await self.hass.async_add_executor_job(status, self.hass)
+        from .database import database_path, status
+        config_entries = self.hass.config_entries.async_entries(DOMAIN)
+        details = await self.hass.async_add_executor_job(status, self.hass, config_entries)
         if details.get("status") == "ok":
             modified = details.get("last_modified")
             if modified:
@@ -890,12 +1278,15 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
                 modified = local_modified.strftime("%d.%m.%Y, %H:%M:%S Uhr") if local_modified else str(modified)
             else:
                 modified = "Noch keine Datenbankdatei vorhanden"
+            db_path = str(database_path(self.hass))
             info = (
+                f"Datenbank: {db_path}\n\n"
                 f"Status: OK\nDateigröße: {details.get('size_bytes', 0)} Byte\n"
                 f"Schema-Version: {details.get('schema_version')}\n"
                 f"Verträge: {details.get('contracts', 0)}\n"
                 f"Zähler: {details.get('meters', 0)}\n"
-                f"Buchungen: {details.get('bookings', 0)}\n"
+                f"Zählerstände: {details.get('meter_readings', 0)}\n"
+                f"Buchungen: {details.get('bookings', 0)}\n\n"
                 f"Letzte Änderung: {modified}"
             )
         else:
@@ -939,20 +1330,94 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
         return self.async_show_form(step_id="database_reset_confirm", data_schema=self._reset_confirm_schema())
 
     async def async_step_data_management(self, user_input=None):
-        """Select reset scopes. The destructive operation is always confirmed separately."""
+        """Navigate directly to reset scopes or database administration."""
+        return self.async_show_menu(step_id="data_management", menu_options=["reset_data", "recorder_entities", "database"])
+
+    def _recorder_entity_groups(self) -> list[tuple[str, list[str]]]:
+        """Return only integration-owned energy and annual-balance entities.
+
+        External source entities and foreign integration entities are excluded.
+        """
+        from .naming import meter_entity_object_ids, slugify_meter_name
+        consumption: list[str] = []
+        feed_in: list[str] = []
+        for meter in self.config_entry.options.get("meters", []):
+            name = str(meter.get("name") or meter.get("meter_name") or "Stromzähler")
+            ids = meter_entity_object_ids(name)
+            if meter.get("consumption_entity"):
+                consumption.extend([
+                    f"sensor.{ids['consumption_today']}",
+                    f"sensor.{ids['consumption_month']}",
+                    f"sensor.{ids['consumption_year']}",
+                ])
+                if meter.get("forecast_consumption_enabled", True):
+                    consumption.append(f"sensor.verbrauchsmonitor_{slugify_meter_name(name)}_verbrauch_jahresbilanz_prognose")
+            if meter.get("feed_in_entity"):
+                feed_in.extend([
+                    f"sensor.{ids['feed_in_today']}",
+                    f"sensor.{ids['feed_in_month']}",
+                    f"sensor.{ids['feed_in_year']}",
+                ])
+                if meter.get("forecast_feed_in_enabled", False):
+                    feed_in.append(f"sensor.verbrauchsmonitor_{slugify_meter_name(name)}_einspeisung_jahresbilanz_prognose")
+        return [(label, list(dict.fromkeys(items))) for label, items in
+                (("Verbrauch", consumption), ("Einspeisung", feed_in)) if items]
+
+    def _recorder_entity_ids(self) -> list[str]:
+        """Return the flattened list of integration-owned Recorder entities."""
+        return [entity_id for _label, items in self._recorder_entity_groups() for entity_id in items]
+
+    async def async_step_recorder_entities(self, user_input=None):
+        """Choose the YAML indentation variant for Recorder entity lists."""
+        return self.async_show_menu(
+            step_id="recorder_entities",
+            menu_options=["recorder_entities_plain", "recorder_entities_include"],
+        )
+
+    async def _show_recorder_entity_list(self, step_id: str, indent: str):
+        """Show the agreed YAML fragment with real line breaks."""
+        groups = self._recorder_entity_groups()
+        lines = ["##", "########################", "##  VerbrauchsMonitor", "########################", "##"]
+        for topic, entity_ids in groups:
+            lines.append(f"      # note: {topic}")
+            lines.extend(f"      - {entity_id}" for entity_id in entity_ids)
+            lines.append("")
+        lines.append("########################")
+        content = "\n".join(lines)
+        if step_id == "recorder_entities_plain":
+            content = "\n".join(line[6:] if line.startswith("      ") else line for line in lines)
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema({
+                vol.Required("entities", default=content): selector.TextSelector(
+                    selector.TextSelectorConfig(multiline=True)
+                )
+            }),
+        )
+
+    async def async_step_recorder_entities_plain(self, user_input=None):
+        """Display entities without leading indentation for recorder.yaml."""
+        return await self._show_recorder_entity_list("recorder_entities_plain", "")
+
+    async def async_step_recorder_entities_include(self, user_input=None):
+        """Display entities as an include-ready YAML fragment."""
+        return await self._show_recorder_entity_list("recorder_entities_include", "  ")
+
+    async def async_step_reset_data(self, user_input=None):
+        """Select reset scopes without changing existing reset workflows."""
         if user_input is not None:
-            selected = [key for key in ("contracts", "meters", "billing", "forecasts", "database") if user_input.get(key)]
+            selected = [key for key in ("contracts", "meters", "billing", "forecasts", "periods") if user_input.get(key)]
             if not selected:
-                return self.async_show_form(step_id="data_management", data_schema=self._reset_schema(), errors={"base": "reset_select_at_least_one"})
+                return self.async_show_form(step_id="reset_data", data_schema=self._reset_schema(), errors={"base": "reset_select_at_least_one"})
             if "contracts" in selected and "meters" not in selected:
-                return self.async_show_form(step_id="data_management", data_schema=self._reset_schema(), errors={"base": "reset_contracts_require_meters"})
-            if selected == ["database"]:
-                return await self.async_step_database()
+                return self.async_show_form(step_id="reset_data", data_schema=self._reset_schema(), errors={"base": "reset_contracts_require_meters"})
             self._reset_scopes = selected
+            if "periods" in selected:
+                return await self.async_step_period_reset_select()
             if "forecasts" in selected:
                 return await self.async_step_forecast_reset_select()
             return await self.async_step_data_management_confirm()
-        return self.async_show_form(step_id="data_management", data_schema=self._reset_schema())
+        return self.async_show_form(step_id="reset_data", data_schema=self._reset_schema())
 
     def _reset_schema(self):
         """Build the reset-scope selection schema."""
@@ -961,8 +1426,151 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
             vol.Optional("meters", default=False): bool,
             vol.Optional("billing", default=False): bool,
             vol.Optional("forecasts", default=False): bool,
-            vol.Optional("database", default=False): bool,
+            vol.Optional("periods", default=False): bool,
         })
+
+    async def async_step_period_reset_select(self, user_input=None):
+        """Select meter and energy direction for a four-period counter reset."""
+        choices = []
+        self._period_reset_sources = {}
+        self._period_reset_labels = {}
+        for meter in self.config_entry.options.get("meters", []):
+            meter_id = str(meter.get("id") or "")
+            name = str(meter.get("name") or meter.get("meter_name") or "Stromzähler")
+            source = meter.get("consumption_entity")
+            if meter_id and source:
+                value = f"{meter_id}|consumption"
+                choices.append({"value": value, "label": f"{name} – Verbrauch"})
+                self._period_reset_sources[value] = source
+                self._period_reset_labels[value] = f"{name} – Verbrauch"
+            source = meter.get("feed_in_entity")
+            if meter_id and source:
+                value = f"{meter_id}|feed_in"
+                choices.append({"value": value, "label": f"{name} – Einspeisung"})
+                self._period_reset_sources[value] = source
+                self._period_reset_labels[value] = f"{name} – Einspeisung"
+        if user_input is not None:
+            selected = list(user_input.get("selected_periods", []))
+            if not selected:
+                return self.async_show_form(step_id="period_reset_select", data_schema=self._period_reset_schema(choices), errors={"base": "reset_select_at_least_one"})
+            valid = set(self._period_reset_sources)
+            self._selected_period_resets = [value for value in selected if value in valid]
+            if not self._selected_period_resets:
+                return self.async_show_form(step_id="period_reset_select", data_schema=self._period_reset_schema(choices), errors={"base": "reset_select_at_least_one"})
+            if "forecasts" in getattr(self, "_reset_scopes", []):
+                return await self.async_step_forecast_reset_select()
+            return await self.async_step_data_management_confirm()
+        if not choices:
+            return self.async_show_form(step_id="period_reset_select", data_schema=self._period_reset_schema([]), errors={"base": "reset_no_period_sources"})
+        return self.async_show_form(step_id="period_reset_select", data_schema=self._period_reset_schema(choices))
+
+    def _period_reset_schema(self, choices):
+        """Render the meter/direction list as a multi-select checkbox list."""
+        return vol.Schema({vol.Required("selected_periods"): selector.SelectSelector(
+            selector.SelectSelectorConfig(options=choices, mode=selector.SelectSelectorMode.LIST, multiple=True)
+        )})
+
+    async def _async_reset_period_stores(self):
+        """Set all selected daily/weekly/monthly/yearly baselines to current readings.
+
+        All sources are validated before the first Store write. The reset changes
+        only the period baselines; it does not delete meter-change segments,
+        contracts, bookings, tariffs, or billing history.
+        """
+        from datetime import timedelta
+        now = dt_util.now()
+        today = now.date()
+        week_start = today - timedelta(days=today.weekday())
+        period_keys = {
+            "daily": today.isoformat(),
+            "week": week_start.isoformat(),
+            "month": today.replace(day=1).isoformat(),
+            "year": today.replace(month=1, day=1).isoformat(),
+        }
+        prepared = []
+        old_payloads = {}
+        new_payloads = {}
+        for selected in getattr(self, "_selected_period_resets", []):
+            meter_id, direction = selected.split("|", 1)
+            source = self._period_reset_sources.get(selected)
+            state = self.hass.states.get(source) if source else None
+            if state is None or state.state in ("unknown", "unavailable"):
+                raise ValueError(f"Aktueller Zählerstand nicht verfügbar: {source or meter_id}")
+            try:
+                import math
+                reading = float(state.state)
+                if not math.isfinite(reading) or reading < 0:
+                    raise ValueError
+            except (TypeError, ValueError):
+                raise ValueError(f"Ungültiger Zählerstand: {source}")
+            prepared.append((meter_id, direction, reading))
+
+        for meter_id, direction, reading in prepared:
+            stores = {
+                f"verbrauchsmonitor_daily_{meter_id}_{direction}": {
+                    "date": period_keys["daily"], "baseline": reading,
+                    "partial_day": True, "offset": 0.0, "last_current": reading,
+                }
+            }
+            for period in ("week", "month", "year"):
+                stores[f"verbrauchsmonitor_{period}_{meter_id}_{direction}"] = {
+                    "period": period_keys[period], "baseline": reading,
+                    "partial": True, "offset": 0.0, "last_current": reading,
+                }
+            new_payloads.update(stores)
+
+        # Capture the old state before writing so a storage error can roll back
+        # every selected period store rather than leave a mixed reset state.
+        for key in new_payloads:
+            old_payloads[key] = await Store(self.hass, 1, key).async_load()
+        # Keep a durable snapshot of the exact previous period stores. This is
+        # separate from the integration database because the period baselines
+        # are Home Assistant Store records, not SQLite rows.
+        backup_payload = {
+            "created_at": now.isoformat(),
+            "selected": list(getattr(self, "_selected_period_resets", [])),
+            "stores": old_payloads,
+        }
+        await Store(self.hass, 1, f"{DOMAIN}_period_reset_backup").async_save(backup_payload)
+
+        written = []
+        try:
+            for key, payload in new_payloads.items():
+                await Store(self.hass, 1, key).async_save(payload)
+                written.append(key)
+        except Exception:
+            for key in reversed(written):
+                store = Store(self.hass, 1, key)
+                previous = old_payloads.get(key)
+                if previous is None:
+                    await store.async_remove()
+                else:
+                    await store.async_save(previous)
+            raise
+
+    def _period_reset_dependency_text(self):
+        """Describe real shared-source dependencies for the selected directions."""
+        meters = list(self.config_entry.options.get("meters", []))
+        selected = set(getattr(self, "_selected_period_resets", []))
+        selected_sources = {
+            self._period_reset_sources.get(value)
+            for value in selected
+            if self._period_reset_sources.get(value)
+        }
+        shared = []
+        for source in sorted(selected_sources):
+            users = []
+            for meter in meters:
+                meter_name = str(meter.get("name") or meter.get("meter_name") or "Stromzähler")
+                if meter.get("consumption_entity") == source:
+                    users.append(f"{meter_name} – Verbrauch")
+                if meter.get("feed_in_entity") == source:
+                    users.append(f"{meter_name} – Einspeisung")
+            if len(users) > 1:
+                shared.append(f"{source}: {', '.join(users)}")
+        if shared:
+            return "Gemeinsam verwendete Messquellen erkannt: " + "; ".join(shared) + ". Alle betroffenen logischen Zuordnungen müssen gemeinsam betrachtet werden."
+        return "Keine mehrfach zugeordneten Messquellen unter den ausgewählten Bereichen erkannt. Je Auswahl werden Tag, Woche, Monat und Jahr gemeinsam auf denselben aktuellen Quellzählerstand gesetzt. Zählerstände, Zählerwechsel-Historie, Verträge, Tarife, Zahlungen und Abrechnungen bleiben erhalten."
 
     async def async_step_forecast_reset_select(self, user_input=None):
         """Select exact meter/direction forecasts before the destructive confirmation."""
@@ -1000,6 +1608,21 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
             if not user_input.get("confirm"):
                 return self.async_show_form(step_id="data_management_confirm", data_schema=self._reset_confirm_schema(), errors={"base": "reset_confirmation_required"})
             options = dict(self.config_entry.options)
+            if "periods" in scopes:
+                try:
+                    await self._async_reset_period_stores()
+                except ValueError as err:
+                    _LOGGER.warning("VerbrauchsMonitor: Periodenreset abgebrochen: %s", err)
+                    return self.async_show_form(
+                        step_id="data_management_confirm", data_schema=self._reset_confirm_schema(),
+                        errors={"base": "reset_period_source_unavailable"},
+                    )
+                except Exception:  # noqa: BLE001 - Store write failures are surfaced to the user.
+                    _LOGGER.exception("VerbrauchsMonitor: Periodenreset konnte nicht gespeichert werden")
+                    return self.async_show_form(
+                        step_id="data_management_confirm", data_schema=self._reset_confirm_schema(),
+                        errors={"base": "reset_period_write_failed"},
+                    )
             if "contracts" in scopes: options["contracts"] = []
             if "meters" in scopes: options["meters"] = []
             if "billing" in scopes: options["bookings"] = []
@@ -1022,14 +1645,21 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
                 if active_forecasts and active_forecasts.issubset(selected_forecasts):
                     options.pop("forecast_season_mode", None)
                     options.pop("forecast_manual_season", None)
-            if "database" in scopes:
-                from .database import reset_database
-                await self.hass.async_add_executor_job(reset_database, self.hass)
+            # A changed options marker forces Home Assistant to reload the
+            # config entry even when the user only reset Store-backed period
+            # values and no visible option was edited. This recreates all
+            # period sensor objects from the freshly written baselines.
+            if "periods" in scopes:
+                options["_period_reset_generation"] = dt_util.utcnow().isoformat()
             # Persist the complete options payload after the selected scopes have been cleared.
             return self.async_create_entry(title="", data=options)
         return self.async_show_form(
             step_id="data_management_confirm", data_schema=self._reset_confirm_schema(),
-            description_placeholders={"scopes": ", ".join(self._labels({"contracts":"Vertrag","meters":"Zähler","billing":"Abrechnungen","forecasts":"Prognosen","database":"Datenbank"}.get(x,x), {"contracts":"Contracts","meters":"Meters","billing":"Billing","forecasts":"Forecasts","database":"Database"}.get(x,x)) for x in scopes)},
+            description_placeholders={
+                "scopes": ", ".join(self._labels({"contracts":"Vertrag","meters":"Zähler","billing":"Abrechnungen","forecasts":"Prognosen","periods":"Periodenwerte"}.get(x,x), {"contracts":"Contracts","meters":"Meters","billing":"Billing","forecasts":"Forecasts","periods":"Period values"}.get(x,x)) for x in scopes),
+                "periods": ", ".join(getattr(self, "_period_reset_labels", {}).get(value, value.replace("|", " – ")) for value in getattr(self, "_selected_period_resets", [])) or "–",
+                "dependencies": self._period_reset_dependency_text() if "periods" in scopes else "Keine zusätzlichen Perioden-Abhängigkeiten.",
+            },
         )
 
     def _reset_confirm_schema(self):
@@ -1039,9 +1669,9 @@ class VerbrauchsMonitorOptionsFlow(config_entries.OptionsFlow):
     async def async_step_about(self, user_input=None):
         """Display informational metadata without changing stored options."""
         if user_input is not None:
-            return self.async_show_menu(step_id="init", menu_options=["contracts", "meters", "forecast", "billing", "data_management", "about"])
+            return self.async_show_menu(step_id="init", menu_options=["contracts", "meters", "forecast", "settlement", "billing", "data_management", "about"])
         return self.async_show_form(
             step_id="about",
             data_schema=vol.Schema({}),
-            description_placeholders={"revision": "R111"},
+            description_placeholders={"revision": RELEASE_REVISION, "version": RELEASE_VERSION, "stage": RELEASE_STAGE},
         )

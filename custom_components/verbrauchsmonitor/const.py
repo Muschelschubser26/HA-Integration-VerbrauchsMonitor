@@ -11,6 +11,10 @@ CONF_CONSUMPTION_POWER_ENTITY: Final = "consumption_power_entity"
 CONF_FEED_IN_ENTITY: Final = "feed_in_entity"
 CONF_FEED_IN_POWER_ENTITY: Final = "feed_in_power_entity"
 CONF_OUTDOOR_ILLUMINANCE_ENTITY: Final = "outdoor_illuminance_entity"
+CONF_OUTDOOR_TEMPERATURE_ENTITY: Final = "outdoor_temperature_entity"
+CONF_OUTDOOR_WIND_DIRECTION_ENTITY: Final = "outdoor_wind_direction_entity"
+CONF_DAILY_PRECIPITATION_ENTITY: Final = "daily_precipitation_entity"
+CONF_OUTDOOR_HUMIDITY_ENTITY: Final = "outdoor_humidity_entity"
 
 # Contract and tariff configuration. Prices are stored as net values;
 # gross values are calculated from the configured VAT rate.
@@ -29,7 +33,10 @@ CONF_BILLING_END: Final = "billing_end"
 
 CARD_URL: Final = "/verbrauchsmonitor/verbrauchsmonitor-card.js"
 CARD_FILENAME: Final = "verbrauchsmonitor-card.js"
-INTEGRATION_VERSION: Final = "0.0.2-dev-r111"
+RELEASE_VERSION: Final = "0.0.1"
+RELEASE_STAGE: Final = "Prod"
+RELEASE_REVISION: Final = "R0171"
+INTEGRATION_VERSION: Final = "0.0.1"
 
 ROLE_CONFIG: Final = {
     CONF_CONSUMPTION_ENTITY: ("consumption_counter", "Verbrauch Zählerstand", "mdi:counter"),

@@ -32,4 +32,12 @@ def meter_entity_object_ids(name: str) -> dict[str, str]:
         "feed_in_power": f"{prefix}_einspeisung_leistung",
         "consumption_balance": f"{prefix}_verbrauch_kontostand",
         "feed_in_balance": f"{prefix}_einspeisung_kontostand",
+        "consumption_today": f"{prefix}_tagesverbrauch",
+        "feed_in_today": f"{prefix}_tageseinspeisung",
+        "consumption_week": f"{prefix}_wochenverbrauch",
+        "consumption_month": f"{prefix}_monatsverbrauch",
+        "consumption_year": f"{prefix}_jahresverbrauch",
+        "feed_in_week": f"{prefix}_wocheneinspeisung",
+        "feed_in_month": f"{prefix}_monatseinspeisung",
+        "feed_in_year": f"{prefix}_jahreseinspeisung",
     }
